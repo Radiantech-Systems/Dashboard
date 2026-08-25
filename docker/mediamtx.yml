@@ -1,0 +1,36 @@
+###############################################################
+# MediaMTX configuration — RTSP-in, HLS/WebRTC-out gateway.
+#
+# Add one entry under "paths:" per CCTV camera. The path name
+# (e.g. "front_gate") becomes part of the stream URL the
+# dashboard uses: http://<server>:8888/front_gate/index.m3u8
+###############################################################
+
+# --- HLS output (works in every browser via hls.js) ---
+hls: yes
+hlsAddress: :8888
+hlsAllowOrigin: "*"
+hlsVariant: lowLatency     # smaller segment size -> lower latency
+hlsSegmentDuration: 1s
+hlsPartDuration: 200ms
+hlsSegmentMaxSize: 5M
+
+# --- WebRTC output (lower latency than HLS, optional) ---
+webrtc: yes
+webrtcAddress: :8889
+
+# --- RTSP passthrough — disabled. The host already runs its own RTSP
+# server (serving the webcam) on port 8554; MediaMTX doesn't need its
+# own RTSP listener for this setup, only HLS output for the browser.
+rtsp: no
+
+paths:
+  # The Ubuntu server's own webcam, already served locally by an
+  # existing RTSP server (process "ubuntu_rtsp_ser") on port 8554.
+  # MediaMTX just pulls from it and re-serves as HLS for the browser.
+  # (Recorded/sliced footage is a separate feature — see the "Sliced
+  # Footage" page — captured on the Jetson itself and uploaded to the
+  # backend, not recorded here.)
+  front_gate:
+    source: rtsp://192.168.1.20:8554/test
+    sourceOnDemand: yes    # only connects to the camera when a viewer is watching
