@@ -107,6 +107,16 @@ export interface FootageClip {
   url: string; // relative — prepend API_URL to play/download
 }
 
+export interface AISnapshot {
+  id: number;
+  camera: string;
+  category: "vehicle" | "human" | "other";
+  label: string;
+  confidence: number | null;
+  captured_at: string;
+  image_url: string;
+}
+
 export interface PowerEvent {
   id: number;
   device_id: string;

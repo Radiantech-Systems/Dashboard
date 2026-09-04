@@ -5,7 +5,7 @@ import { Box, Typography, CircularProgress, Alert } from "@mui/material";
 const MEDIAMTX_URL = import.meta.env.VITE_MEDIAMTX_URL || "http://localhost:8888";
 
 interface VideoPlayerProps {
-  /** The MediaMTX path name configured in docker/mediamtx.yml, e.g. "front_gate" */
+  /** The MediaMTX path name configured on the Jetson, e.g. "front_gate" */
   cameraPath: string;
 }
 

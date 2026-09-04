@@ -58,3 +58,24 @@ class PowerEvent(Base):
     event_type = Column(String(16), nullable=False)  # 'power_on' | 'power_off'
     reason = Column(String(256))
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+class AISnapshot(Base):
+    __tablename__ = "ai_snapshots"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+
+    camera = Column(String(128), nullable=False, index=True)
+
+    # vehicle | human | other
+    category = Column(String(32), nullable=False, index=True)
+
+    # car | truck | person | etc.
+    label = Column(String(128), nullable=False)
+
+    confidence = Column(Double)
+
+    filename = Column(String(256), nullable=False)
+
+    captured_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

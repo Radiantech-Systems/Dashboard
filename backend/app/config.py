@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     DEVICE_OFFLINE_TIMEOUT_SECONDS: int = 5
     API_KEY: str = ""  # empty = auth disabled (local dev only)
     FOOTAGE_STORAGE_DIR: str = "/app/footage_storage"
+    AI_SNAPSHOT_STORAGE_DIR: str = "/app/ai_snapshot_storage"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

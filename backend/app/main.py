@@ -24,7 +24,17 @@ from app.websocket_manager import manager
 from app.security import verify_api_key_ws
 from app.logger import get_logger
 
-from app.routers import telemetry, dashboard, system_info, performance, power, network, temperature, footage
+from app.routers import (
+    telemetry,
+    dashboard,
+    system_info,
+    performance,
+    power,
+    network,
+    temperature,
+    footage,
+    ai_snapshots,
+)
 
 logger = get_logger("main")
 
@@ -59,6 +69,13 @@ async def lifespan(app: FastAPI):
     logger.info("Database tables ensured.")
     os.makedirs(settings.FOOTAGE_STORAGE_DIR, exist_ok=True)
     logger.info(f"Footage storage directory ensured at {settings.FOOTAGE_STORAGE_DIR}")
+    
+    os.makedirs(settings.AI_SNAPSHOT_STORAGE_DIR, exist_ok=True)
+    logger.info(
+       f"AI snapshot storage directory ensured at "
+       f"{settings.AI_SNAPSHOT_STORAGE_DIR}" )
+    
+
     task = asyncio.create_task(_offline_watcher())
     yield
     task.cancel()
@@ -82,6 +99,7 @@ app.include_router(power.router)
 app.include_router(network.router)
 app.include_router(temperature.router)
 app.include_router(footage.router)
+app.include_router(ai_snapshots.router)
 
 # Serve recorded clips as static files for the <video> player.
 # Not gated by API_KEY (same posture as the MediaMTX HLS stream) —
@@ -89,6 +107,13 @@ app.include_router(footage.router)
 os.makedirs(settings.FOOTAGE_STORAGE_DIR, exist_ok=True)
 app.mount("/footage-files", StaticFiles(directory=settings.FOOTAGE_STORAGE_DIR), name="footage-files")
 
+os.makedirs(settings.AI_SNAPSHOT_STORAGE_DIR, exist_ok=True)
+
+app.mount(
+    "/ai-snapshot-files",
+    StaticFiles(directory=settings.AI_SNAPSHOT_STORAGE_DIR),
+    name="ai-snapshot-files",
+)
 
 @app.get("/health")
 def health():

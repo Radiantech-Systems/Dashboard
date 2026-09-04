@@ -1,6 +1,34 @@
 import axios from "axios";
-import type { DeviceSummary, TemperatureHistoryPoint, FootageClip, PowerEvent } from "../types/telemetry";
+import type {
+  DeviceSummary,
+  TemperatureHistoryPoint,
+  FootageClip,
+  PowerEvent,
+  AISnapshot,
+} from "../types/telemetry";
 
+export async function getAISnapshots(params?: {
+  category?: "vehicle" | "human" | "other";
+  camera?: string;
+  limit?: number;
+}): Promise<AISnapshot[]> {
+  const { data } = await client.get("/ai-snapshots", {
+    params,
+  });
+
+  return data;
+}
+
+export function aiSnapshotImageUrl(relativeUrl: string): string {
+  if (
+    relativeUrl.startsWith("http://") ||
+    relativeUrl.startsWith("https://")
+  ) {
+    return relativeUrl;
+  }
+
+  return `${API_URL}${relativeUrl}`;
+}
 export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 export const JETSON_VIDEO_URL = "http://192.168.1.155:5000";
 const API_KEY = import.meta.env.VITE_API_KEY || "";

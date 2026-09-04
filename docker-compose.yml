@@ -41,18 +41,10 @@ services:
       FOOTAGE_STORAGE_DIR: /app/footage_storage
     volumes:
       - footage_data:/app/footage_storage
+      - ai_snapshot_data:/app/ai_snapshot_storage
     ports:
       - "8000:8000"
 
-  mediamtx:
-    image: bluenviron/mediamtx:latest
-    container_name: telemetry-mediamtx
-    restart: unless-stopped
-    volumes:
-      - ./docker/mediamtx.yml:/mediamtx.yml:ro
-    ports:
-      - "8888:8888"   # HLS (what the dashboard's <video> player uses)
-      - "8889:8889"   # WebRTC
 
   frontend:
     build:
@@ -72,3 +64,4 @@ services:
 volumes:
   postgres_data:
   footage_data:
+  ai_snapshot_data:

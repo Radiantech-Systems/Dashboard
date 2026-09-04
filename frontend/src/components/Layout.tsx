@@ -13,6 +13,7 @@ import ThermostatIcon from "@mui/icons-material/ThermostatOutlined";
 import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 import MemoryIcon from "@mui/icons-material/MemoryOutlined";
 import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
+import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 import type { ConnectionStatus } from "../hooks/useTelemetrySocket";
 
 const DRAWER_WIDTH = 240;
@@ -25,6 +26,11 @@ const NAV_ITEMS = [
   { label: "Network & Cameras", path: "/network-cameras", icon: <WifiIcon /> },
   { label: "Temperature History", path: "/temperature-history", icon: <ThermostatIcon /> },
   { label: "Sliced Footage", path: "/sliced-footage", icon: <MovieOutlinedIcon /> },
+  {
+  label: "AI Snapshots",
+  path: "/ai-snapshots",
+  icon: <CameraAltOutlinedIcon />,
+  },
   { label: "Settings", path: "/settings", icon: <SettingsIcon /> },
 ];
 

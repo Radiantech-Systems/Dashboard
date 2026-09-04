@@ -61,3 +61,23 @@ CREATE TABLE IF NOT EXISTS power_events (
 CREATE INDEX IF NOT EXISTS idx_power_events_device_ts
     ON power_events (device_id, timestamp DESC);
 
+-- ============================================================
+-- AI Snapshots
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS ai_snapshots (
+    id              BIGSERIAL PRIMARY KEY,
+    camera          VARCHAR(128) NOT NULL,
+    category        VARCHAR(32) NOT NULL,
+    label           VARCHAR(128) NOT NULL,
+    confidence      DOUBLE PRECISION,
+    filename        VARCHAR(256) NOT NULL,
+    captured_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_snapshots_category_ts
+    ON ai_snapshots (category, captured_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_ai_snapshots_camera_ts
+    ON ai_snapshots (camera, captured_at DESC);
