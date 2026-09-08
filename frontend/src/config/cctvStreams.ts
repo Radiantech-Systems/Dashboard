@@ -13,12 +13,12 @@ export interface CctvStream {
 
 export const CCTV_STREAMS: CctvStream[] = [
   {
-    label: "Front Gate (CP Plus)",
+    label: "Main Stream (CP Plus)",
     path: "front_gate",
     source: "mediamtx",
   },
   {
-    label: "Front Gate AI",
+    label: "Processed AI Stream",
     path: "front_gate_ai",
     source: "mediamtx",
   },
