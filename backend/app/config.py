@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
     DEVICE_OFFLINE_TIMEOUT_SECONDS: int = 5
     API_KEY: str = ""  # empty = auth disabled (local dev only)
+    AUTH_USERNAME: str = "Radiantech-Dashboard"
+    AUTH_PASSWORD_HASH: str = ""
+    AUTH_SESSION_SECRET: str = ""
     FOOTAGE_STORAGE_DIR: str = "/app/footage_storage"
     AI_SNAPSHOT_STORAGE_DIR: str = "/app/ai_snapshot_storage"
 

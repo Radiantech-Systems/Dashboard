@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models import AISnapshot
-from app.security import verify_api_key
+from app.security import verify_dashboard_auth
 
 
 router = APIRouter(tags=["ai-snapshots"])
@@ -39,7 +39,7 @@ async def upload_ai_snapshot(
     captured_at: Optional[datetime] = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _auth=Depends(verify_api_key),
+    _auth=Depends(verify_dashboard_auth),
 ):
     category = category.lower().strip()
 
@@ -131,7 +131,7 @@ def list_ai_snapshots(
     camera: Optional[str] = Query(None),
     limit: int = Query(100, le=500),
     db: Session = Depends(get_db),
-    _auth=Depends(verify_api_key),
+    _auth=Depends(verify_dashboard_auth),
 ):
     query = db.query(AISnapshot)
 

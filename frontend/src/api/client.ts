@@ -7,6 +7,58 @@ import type {
   AISnapshot,
 } from "../types/telemetry";
 
+export const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+export const JETSON_VIDEO_URL =
+  import.meta.env.VITE_JETSON_VIDEO_URL || "http://192.168.1.155:5000";
+
+export const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  "ws://localhost:8000/ws/telemetry";
+
+const client = axios.create({
+  baseURL: API_URL,
+  timeout: 8000,
+  withCredentials: true,
+});
+
+
+// =========================
+// Authentication
+// =========================
+
+export interface AuthResponse {
+  authenticated: boolean;
+  username?: string;
+}
+
+export async function login(
+  username: string,
+  password: string
+): Promise<AuthResponse> {
+  const { data } = await client.post<AuthResponse>("/auth/login", {
+    username,
+    password,
+  });
+
+  return data;
+}
+
+export async function getCurrentUser(): Promise<AuthResponse> {
+  const { data } = await client.get<AuthResponse>("/auth/me");
+  return data;
+}
+
+export async function logout(): Promise<void> {
+  await client.post("/auth/logout");
+}
+
+
+// =========================
+// AI Snapshots
+// =========================
+
 export async function getAISnapshots(params?: {
   category?: "vehicle" | "human" | "other";
   camera?: string;
@@ -29,45 +81,89 @@ export function aiSnapshotImageUrl(relativeUrl: string): string {
 
   return `${API_URL}${relativeUrl}`;
 }
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
-export const JETSON_VIDEO_URL = "http://192.168.1.155:5000";
-const API_KEY = import.meta.env.VITE_API_KEY || "";
-export const WS_URL = API_KEY
-  ? `${import.meta.env.VITE_WS_URL || "ws://localhost:8000/ws/telemetry"}?api_key=${encodeURIComponent(API_KEY)}`
-  : (import.meta.env.VITE_WS_URL || "ws://localhost:8000/ws/telemetry");
 
-const client = axios.create({
-  baseURL: API_URL,
-  timeout: 8000,
-  headers: API_KEY ? { "X-API-Key": API_KEY } : {},
-});
 
-export async function getDashboard(): Promise<{ devices: DeviceSummary[] }> {
+// =========================
+// Dashboard
+// =========================
+
+export async function getDashboard(): Promise<{
+  devices: DeviceSummary[];
+}> {
   const { data } = await client.get("/dashboard");
   return data;
 }
 
+
+// =========================
+// System Information
+// =========================
+
 export async function getSystemInfo(deviceId?: string) {
-  const { data } = await client.get("/system-info", { params: { device_id: deviceId } });
+  const { data } = await client.get("/system-info", {
+    params: {
+      device_id: deviceId,
+    },
+  });
+
   return data;
 }
+
+
+// =========================
+// Performance
+// =========================
 
 export async function getPerformance(deviceId?: string) {
-  const { data } = await client.get("/performance", { params: { device_id: deviceId } });
+  const { data } = await client.get("/performance", {
+    params: {
+      device_id: deviceId,
+    },
+  });
+
   return data;
 }
+
+
+// =========================
+// Power
+// =========================
 
 export async function getPower(deviceId?: string) {
-  const { data } = await client.get("/power", { params: { device_id: deviceId } });
+  const { data } = await client.get("/power", {
+    params: {
+      device_id: deviceId,
+    },
+  });
+
   return data;
 }
+
+
+// =========================
+// Network
+// =========================
 
 export async function getNetwork(deviceId?: string) {
-  const { data } = await client.get("/network", { params: { device_id: deviceId } });
+  const { data } = await client.get("/network", {
+    params: {
+      device_id: deviceId,
+    },
+  });
+
   return data;
 }
 
-export type RangePreset = "last_hour" | "last_day" | "last_week" | "custom";
+
+// =========================
+// Temperature
+// =========================
+
+export type RangePreset =
+  | "last_hour"
+  | "last_day"
+  | "last_week"
+  | "custom";
 
 export async function getTemperatureHistory(params: {
   deviceId?: string;
@@ -83,6 +179,7 @@ export async function getTemperatureHistory(params: {
       end: params.end,
     },
   });
+
   return data;
 }
 
@@ -93,13 +190,30 @@ export function buildTemperatureExportUrl(params: {
   end?: string;
 }): string {
   const search = new URLSearchParams();
-  if (params.deviceId) search.set("device_id", params.deviceId);
-  if (params.range) search.set("range", params.range);
-  if (params.start) search.set("start", params.start);
-  if (params.end) search.set("end", params.end);
-  if (API_KEY) search.set("api_key", API_KEY);
+
+  if (params.deviceId) {
+    search.set("device_id", params.deviceId);
+  }
+
+  if (params.range) {
+    search.set("range", params.range);
+  }
+
+  if (params.start) {
+    search.set("start", params.start);
+  }
+
+  if (params.end) {
+    search.set("end", params.end);
+  }
+
   return `${API_URL}/temperature/history/export?${search.toString()}`;
 }
+
+
+// =========================
+// Recorded Footage
+// =========================
 
 export async function getFootage(_params: {
   deviceId?: string;
@@ -109,7 +223,9 @@ export async function getFootage(_params: {
 }): Promise<FootageClip[]> {
   const { data } = await axios.get(
     `${JETSON_VIDEO_URL}/videos`,
-    { timeout: 8000 }
+    {
+      timeout: 8000,
+    }
   );
 
   return data.map((video: { name: string; path: string }) => ({
@@ -120,12 +236,21 @@ export async function getFootage(_params: {
 }
 
 export function footageClipUrl(relativeUrl: string): string {
-  if (relativeUrl.startsWith("http://") || relativeUrl.startsWith("https://")) {
+  if (
+    relativeUrl.startsWith("http://") ||
+    relativeUrl.startsWith("https://")
+  ) {
     return relativeUrl;
   }
 
   return `${JETSON_VIDEO_URL}${relativeUrl}`;
 }
+
+
+// =========================
+// Power Events
+// =========================
+
 export async function getPowerEvents(params: {
   deviceId?: string;
   range?: Exclude<RangePreset, "custom">;
@@ -140,8 +265,9 @@ export async function getPowerEvents(params: {
       end: params.end,
     },
   });
+
   return data;
 }
 
-export default client;
 
+export default client;

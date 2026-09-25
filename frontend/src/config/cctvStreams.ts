@@ -14,12 +14,12 @@ export interface CctvStream {
 export const CCTV_STREAMS: CctvStream[] = [
   {
     label: "Main Stream (CP Plus)",
-    path: "front_gate",
+    path: "jetson1_raw",
     source: "mediamtx",
   },
   {
     label: "Processed AI Stream",
-    path: "front_gate_ai",
+    path: "jetson1_ai",
     source: "mediamtx",
   },
 ];

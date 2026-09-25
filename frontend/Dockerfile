@@ -13,7 +13,7 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
 ENV VITE_API_KEY=$VITE_API_KEY
 ENV VITE_MEDIAMTX_URL=$VITE_MEDIAMTX_URL
-RUN npm run build
+RUN NODE_OPTIONS="--max-old-space-size=768" npm run build
 
 # --- Serve stage ---
 FROM nginx:1.27-alpine

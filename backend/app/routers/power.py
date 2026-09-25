@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from app.routers.system_info import _resolve
-from app.security import verify_api_key
+from app.security import verify_dashboard_auth
 from app.database import get_db
 from app.models import PowerEvent
 from app.schemas import PowerEventIn, PowerEventOut
@@ -29,13 +29,13 @@ logger = get_logger("power")
 
 
 @router.get("/power")
-def get_power(device_id: Optional[str] = Query(None), _auth=Depends(verify_api_key)):
+def get_power(device_id: Optional[str] = Query(None), _auth=Depends(verify_dashboard_auth)):
     live = _resolve(device_id)
     return live.get("power", {})
 
 
 @router.post("/power/events", response_model=PowerEventOut)
-def log_power_event(event: PowerEventIn, db: Session = Depends(get_db), _auth=Depends(verify_api_key)):
+def log_power_event(event: PowerEventIn, db: Session = Depends(get_db), _auth=Depends(verify_dashboard_auth)):
     row = PowerEvent(device_id=event.device_id, event_type=event.event_type, reason=event.reason)
     db.add(row)
     db.commit()
@@ -52,7 +52,7 @@ def get_power_events(
     end: Optional[datetime] = Query(None),
     limit: int = Query(200, le=1000),
     db: Session = Depends(get_db),
-    _auth=Depends(verify_api_key),
+    _auth=Depends(verify_dashboard_auth),
 ):
     presets = {"last_hour": timedelta(hours=1), "last_day": timedelta(days=1), "last_week": timedelta(weeks=1)}
     if range and range in presets:

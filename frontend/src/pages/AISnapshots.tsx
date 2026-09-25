@@ -39,8 +39,7 @@ type FlaskSnapshotResponse = {
   others: FlaskSnapshot[];
 };
 
-const JETSON_SNAPSHOT_API = "http://192.168.1.155:5000";
-
+const JETSON_SNAPSHOT_API = "http://192.168.137.2:5000";
 const CATEGORY_CONFIG: Record<
   Category,
   {

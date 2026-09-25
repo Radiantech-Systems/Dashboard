@@ -22,7 +22,7 @@ from sqlalchemy import and_
 from app.database import get_db
 from app.models import FootageClip
 from app.schemas import FootageClipOut
-from app.security import verify_api_key
+from app.security import verify_dashboard_auth
 from app.config import settings
 from app.logger import get_logger
 
@@ -45,7 +45,7 @@ async def upload_footage(
     duration_seconds: float = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _auth=Depends(verify_api_key),
+    _auth=Depends(verify_dashboard_auth),
 ):
     safe_device = _sanitize(device_id)
     safe_filename = _sanitize(file.filename or f"clip_{int(started_at.timestamp())}.mp4")
@@ -86,7 +86,7 @@ def list_footage(
     end: Optional[datetime] = Query(None),
     limit: int = Query(200, le=1000),
     db: Session = Depends(get_db),
-    _auth=Depends(verify_api_key),
+    _auth=Depends(verify_dashboard_auth),
 ):
     presets = {"last_hour": timedelta(hours=1), "last_day": timedelta(days=1), "last_week": timedelta(weeks=1)}
     if range and range in presets:

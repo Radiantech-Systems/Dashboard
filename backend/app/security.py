@@ -1,33 +1,62 @@
 """
-Minimal shared-secret authentication.
+Authentication helpers for Jetson telemetry and dashboard access.
 
-Since this dashboard is being exposed to the public internet (via a
-tunnel or public IP), every REST call and the WebSocket connection
-must present the API key configured in .env. This is intentionally
-simple (a single shared key, not per-user accounts) — enough to stop
-random internet traffic from reading your telemetry or posting fake
-data, without the overhead of a full auth system for a single-operator
-dashboard.
+- Jetson/device telemetry uses the shared API key.
+- Browser dashboard access uses the authenticated telemetry_session cookie.
 """
-from fastapi import Header, HTTPException, Query
+
+from fastapi import Header, HTTPException, Query, Cookie
 from typing import Optional
 
 from app.config import settings
 
 
-def verify_api_key(x_api_key: Optional[str] = Header(None), api_key: Optional[str] = Query(None)) -> None:
-    """Dependency for REST endpoints: checks the X-API-Key header, falling
-    back to an ?api_key= query param (needed for the CSV export link,
-    which browsers open as a plain navigation with no custom headers)."""
+def verify_api_key(
+    x_api_key: Optional[str] = Header(None),
+    api_key: Optional[str] = Query(None),
+) -> None:
+    """
+    Authentication for Jetson/device API requests.
+
+    Checks the X-API-Key header and falls back to ?api_key=
+    for browser download links that cannot send custom headers.
+    """
     if not settings.API_KEY:
-        return  # auth disabled (local/dev use)
+        return
+
     if x_api_key != settings.API_KEY and api_key != settings.API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or missing API key",
+        )
 
 
-def verify_api_key_ws(api_key: Optional[str] = Query(None)) -> bool:
-    """For the WebSocket endpoint: checks the ?api_key= query param
-    (browsers can't set custom headers on a WebSocket handshake)."""
+def verify_dashboard_auth(
+    telemetry_session: Optional[str] = Cookie(default=None),
+) -> None:
+    """
+    Authentication for browser dashboard REST requests.
+
+    The browser receives telemetry_session after successful
+    dashboard login and sends it automatically with API requests.
+    """
+    from app.auth import _valid_session
+
+    if not _valid_session(telemetry_session):
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+        )
+
+
+def verify_api_key_ws(
+    api_key: Optional[str] = Query(None),
+) -> bool:
+    """
+    Legacy WebSocket API-key authentication.
+    Kept for compatibility with device/API-key clients.
+    """
     if not settings.API_KEY:
         return True
+
     return api_key == settings.API_KEY

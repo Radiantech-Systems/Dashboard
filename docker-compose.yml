@@ -1,4 +1,4 @@
-# Runs on the Ubuntu Server/Laptop only.
+
 # The Jetson agent (jetson-agent/) is NOT part of this compose file —
 # it runs directly on the Jetson device and points at this server's IP.
 
@@ -38,6 +38,9 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:8080}
       DEVICE_OFFLINE_TIMEOUT_SECONDS: 5
       API_KEY: ${API_KEY:-}
+      AUTH_USERNAME: ${AUTH_USERNAME:-Radiantech-Dashboard}
+      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:-}
+      AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:-}
       FOOTAGE_STORAGE_DIR: /app/footage_storage
     volumes:
       - footage_data:/app/footage_storage
@@ -45,14 +48,12 @@ services:
     ports:
       - "8000:8000"
 
-
   frontend:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+        VITE_API_URL: ${VITE_API_URL:-/api}
         VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8000/ws/telemetry}
-        VITE_API_KEY: ${VITE_API_KEY:-}
         VITE_MEDIAMTX_URL: ${VITE_MEDIAMTX_URL:-http://localhost:8888}
     container_name: telemetry-frontend
     restart: unless-stopped
@@ -60,6 +61,16 @@ services:
       - backend
     ports:
       - "8080:80"
+
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: aws-mediamtx
+    restart: unless-stopped
+    ports:
+      - "8554:8554"
+      - "8888:8888"
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
 
 volumes:
   postgres_data:

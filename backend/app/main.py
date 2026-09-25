@@ -21,7 +21,7 @@ from app.config import settings
 from app.database import Base, engine, SessionLocal
 from app.models import Device, PowerEvent
 from app.websocket_manager import manager
-from app.security import verify_api_key_ws
+from app.auth import router as auth_router, _valid_session
 from app.logger import get_logger
 
 from app.routers import (
@@ -91,6 +91,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(telemetry.router)
 app.include_router(dashboard.router)
 app.include_router(system_info.router)
@@ -121,17 +122,29 @@ def health():
 
 
 @app.websocket("/ws/telemetry")
-async def websocket_telemetry(websocket: WebSocket, api_key: str | None = None):
-    if not verify_api_key_ws(api_key):
+async def websocket_telemetry(websocket: WebSocket):
+    """
+    Dashboard WebSocket authentication.
+
+    The browser sends the telemetry_session cookie automatically
+    after successful dashboard login.
+    """
+    telemetry_session = websocket.cookies.get("telemetry_session")
+
+    if not _valid_session(telemetry_session):
         await websocket.close(code=4401)
         return
+
     await manager.connect(websocket)
+
     try:
         while True:
-            # Dashboard clients don't need to send anything; keep the
-            # connection alive and drain any client pings.
+            # Dashboard clients don't need to send anything;
+            # keep the connection alive and drain client pings.
             await websocket.receive_text()
+
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
+
     except Exception:
         await manager.disconnect(websocket)

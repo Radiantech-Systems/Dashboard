@@ -29,7 +29,11 @@ export default function VideoPlayer({ cameraPath }: VideoPlayerProps) {
     let hls: Hls | null = null;
 
     if (Hls.isSupported()) {
-      hls = new Hls({ lowLatencyMode: true, backBufferLength: 10 });
+      hls = new Hls({
+        lowLatencyMode: true,
+        backBufferLength: 10,
+      });
+
       hls.loadSource(streamUrl);
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -45,6 +49,7 @@ export default function VideoPlayer({ cameraPath }: VideoPlayerProps) {
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       // Safari: native HLS
       video.src = streamUrl;
+      video.crossOrigin = "use-credentials";
       video.addEventListener("loadedmetadata", () => {
         video.play().catch(() => {});
         setStatus("playing");
