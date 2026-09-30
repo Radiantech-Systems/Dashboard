@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
 
     CORS_ORIGINS: str = "http://localhost:5173,http://localhost:3000"
-    DEVICE_OFFLINE_TIMEOUT_SECONDS: int = 5
+    DEVICE_OFFLINE_TIMEOUT_SECONDS: int = 15
     API_KEY: str = ""  # empty = auth disabled (local dev only)
     AUTH_USERNAME: str = "Radiantech-Dashboard"
     AUTH_PASSWORD_HASH: str = ""

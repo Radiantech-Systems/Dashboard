@@ -24,22 +24,39 @@ import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 
+import { API_URL } from "../api/client";
+
 type Category = "vehicle" | "human" | "other";
 
-type FlaskSnapshot = {
+type Snapshot = {
   filename: string;
+  image: string;
+  mime_type: string;
+  timestamp: string;
   category: string;
-  timestamp: number;
-  url: string;
 };
 
-type FlaskSnapshotResponse = {
-  people: FlaskSnapshot[];
-  vehicles: FlaskSnapshot[];
-  others: FlaskSnapshot[];
+type SnapshotData = {
+  people: Snapshot[];
+  vehicles: Snapshot[];
+  others: Snapshot[];
 };
 
-const JETSON_SNAPSHOT_API = "http://192.168.137.2:5000";
+type SnapshotRequestResponse = {
+  status: string;
+  request_id: string;
+  device_id: string;
+};
+
+type SnapshotResultResponse = {
+  status: string;
+  request_id: string;
+  device_id?: string;
+  data?: SnapshotData;
+};
+
+const DEVICE_ID = "jetson-orin-01";
+
 const CATEGORY_CONFIG: Record<
   Category,
   {
@@ -61,88 +78,292 @@ const CATEGORY_CONFIG: Record<
   },
 };
 
-function imageUrl(snapshot: FlaskSnapshot): string {
-  return `${JETSON_SNAPSHOT_API}${snapshot.url}`;
+function imageUrl(snapshot: Snapshot): string {
+  return `data:${snapshot.mime_type};base64,${snapshot.image}`;
 }
 
-function snapshotLabel(snapshot: FlaskSnapshot): string {
-  if (snapshot.category === "people") {
+function snapshotLabel(
+  snapshot: Snapshot,
+  selectedCategory: Category,
+): string {
+  if (selectedCategory === "human") {
     return "Person";
   }
 
-  if (snapshot.category === "vehicles") {
+  if (selectedCategory === "vehicle") {
     return "Vehicle";
   }
 
-  if (snapshot.category === "animals") {
+  const filename = snapshot.filename.toLowerCase();
+
+  if (
+    filename.startsWith("dog_") ||
+    filename.startsWith("cat_") ||
+    filename.startsWith("bird_") ||
+    filename.startsWith("horse_") ||
+    filename.startsWith("sheep_") ||
+    filename.startsWith("cow_")
+  ) {
     return "Animal";
   }
 
-  if (snapshot.category === "electronics") {
+  if (
+    filename.startsWith("laptop_") ||
+    filename.startsWith("keyboard_") ||
+    filename.startsWith("mouse_") ||
+    filename.startsWith("remote_") ||
+    filename.startsWith("cell_phone_")
+  ) {
     return "Electronics";
   }
 
   return "Other";
 }
 
-function formatTimestamp(timestamp: number): string {
-  return new Date(timestamp * 1000).toLocaleString();
+function formatTimestamp(timestamp: string): string {
+  return new Date(timestamp).toLocaleString();
 }
 
 export default function AISnapshots() {
-  const [category, setCategory] = useState<Category>("vehicle");
-  const [snapshots, setSnapshots] = useState<FlaskSnapshot[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [category, setCategory] =
+    useState<Category>("vehicle");
+
+  /*
+   * Keep all categories in state.
+   *
+   * The Jetson sends:
+   *   people
+   *   vehicles
+   *   others
+   *
+   * We keep them separately so changing the selected
+   * category does NOT trigger another Jetson request.
+   */
+  const [snapshotData, setSnapshotData] =
+    useState<SnapshotData>({
+      people: [],
+      vehicles: [],
+      others: [],
+    });
+
+  const [loading, setLoading] =
+    useState(false);
 
   const [selectedSnapshot, setSelectedSnapshot] =
-    useState<FlaskSnapshot | null>(null);
+    useState<Snapshot | null>(null);
 
   async function loadSnapshots() {
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const response = await fetch(
-        `${JETSON_SNAPSHOT_API}/api/snapshots`,
+  try {
+    const BATCH_SIZE = 30;
+
+    let offset = 0;
+
+    const allData: SnapshotData = {
+      people: [],
+      vehicles: [],
+      others: [],
+    };
+
+    while (true) {
+      /*
+       * Ask AWS for the next 30 snapshots
+       * from the Jetson.
+       */
+      const requestResponse = await fetch(
+        `${API_URL}/snapshot-commands/request`,
         {
-          method: "GET",
-          cache: "no-store",
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            device_id: DEVICE_ID,
+            offset,
+            limit: BATCH_SIZE,
+          }),
         },
       );
 
-      if (!response.ok) {
+      if (!requestResponse.ok) {
         throw new Error(
-          `Snapshot server returned ${response.status}`,
+          `Snapshot request failed: ${requestResponse.status}`,
         );
       }
 
-      const data: FlaskSnapshotResponse = await response.json();
+      const requestData: SnapshotRequestResponse =
+        await requestResponse.json();
 
-      if (category === "human") {
-        setSnapshots(data.people || []);
-      } else if (category === "vehicle") {
-        setSnapshots(data.vehicles || []);
-      } else {
-        setSnapshots(data.others || []);
+      /*
+       * Wait for Jetson to process this batch.
+       */
+      const maxAttempts = 120;
+
+      let batchData: SnapshotData | null = null;
+
+      for (
+        let attempt = 0;
+        attempt < maxAttempts;
+        attempt++
+      ) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 500),
+        );
+
+        const resultResponse = await fetch(
+          `${API_URL}/snapshot-commands/result/${requestData.request_id}`,
+          {
+            method: "GET",
+            cache: "no-store",
+            credentials: "include",
+          },
+        );
+
+        if (!resultResponse.ok) {
+          throw new Error(
+            `Snapshot result failed: ${resultResponse.status}`,
+          );
+        }
+
+        const resultData: SnapshotResultResponse =
+          await resultResponse.json();
+
+        if (
+          resultData.status === "ready" &&
+          resultData.data
+        ) {
+          batchData = resultData.data;
+          break;
+        }
       }
-    } catch (error) {
-      console.error(
-        "Failed to load AI snapshots from Jetson Flask server:",
-        error,
+
+      if (!batchData) {
+        throw new Error(
+          "Jetson did not return snapshots in time.",
+        );
+      }
+
+      /*
+       * Append this batch to everything received so far.
+       */
+      allData.people.push(
+        ...(batchData.people || []),
       );
 
-      setSnapshots([]);
+      allData.vehicles.push(
+        ...(batchData.vehicles || []),
+      );
+
+      allData.others.push(
+        ...(batchData.others || []),
+      );
+
+      /*
+       * IMPORTANT:
+       * Display the batch immediately.
+       * Don't wait for all old snapshots.
+       */
+      setSnapshotData({
+        people: [...allData.people],
+        vehicles: [...allData.vehicles],
+        others: [...allData.others],
+      });
+
+      /*
+       * Check whether there are more snapshots.
+       */
+      const peopleCount =
+        batchData.people?.length || 0;
+
+      const vehiclesCount =
+        batchData.vehicles?.length || 0;
+
+      const othersCount =
+        batchData.others?.length || 0;
+
+      const maxCategoryCount = Math.max(
+        peopleCount,
+        vehiclesCount,
+        othersCount,
+      );
+
+      /*
+       * If no category returned a full batch,
+       * we reached the end.
+       */
+      if (maxCategoryCount < BATCH_SIZE) {
+        break;
+      }
+
+      /*
+       * Move to the next 30 older snapshots.
+       */
+      offset += BATCH_SIZE;
+    }
+  } catch (error) {
+    console.error(
+      "Failed to load AI snapshots:",
+      error,
+    );
+  } finally {
+    setLoading(false);
+  }
+}
+
+
+
+
+  /*
+   * Request snapshots only while this page is mounted.
+   *
+   * IMPORTANT:
+   * category is intentionally NOT in the dependency list.
+   *
+   * Therefore changing People / Vehicles / Others
+   * does NOT create another request to Jetson.
+   */
+useEffect(() => {
+  let cancelled = false;
+  let inFlight = false;
+
+  async function refresh() {
+    if (cancelled || inFlight) {
+      return;
+    }
+
+    inFlight = true;
+
+    try {
+      await loadSnapshots();
     } finally {
-      setLoading(false);
+      inFlight = false;
     }
   }
 
-  useEffect(() => {
-    loadSnapshots();
+  refresh();
 
-    const interval = setInterval(loadSnapshots, 5000);
+  const interval = window.setInterval(
+    refresh,
+    5000,
+  );
 
-    return () => clearInterval(interval);
-  }, [category]);
+  return () => {
+    cancelled = true;
+    window.clearInterval(interval);
+  };
+}, []);
+
+  /*
+   * Select the correct array for the currently selected category.
+   */
+  const snapshots =
+    category === "human"
+      ? snapshotData.people
+      : category === "vehicle"
+        ? snapshotData.vehicles
+        : snapshotData.others;
 
   return (
     <Box>
@@ -154,7 +375,10 @@ export default function AISnapshots() {
       >
         <CameraAltOutlinedIcon color="primary" />
 
-        <Typography variant="h5" fontWeight={700}>
+        <Typography
+          variant="h5"
+          fontWeight={700}
+        >
           AI Snapshots
         </Typography>
 
@@ -162,41 +386,52 @@ export default function AISnapshots() {
           size="small"
           label={`${snapshots.length} snapshots`}
         />
+
+        {loading && (
+          <CircularProgress
+            size={20}
+            sx={{ ml: 1 }}
+          />
+        )}
       </Stack>
 
-      <Grid container spacing={3}>
-        {/* LEFT CATEGORY MENU */}
-        <Grid item xs={12} md={2.5}>
-          <Paper sx={{ overflow: "hidden" }}>
-            <Box sx={{ p: 2 }}>
-              <Typography
-                variant="subtitle1"
-                fontWeight={700}
-              >
-                Categories
-              </Typography>
-            </Box>
-
-            <Divider />
-
-            <List sx={{ p: 1 }}>
-              {(Object.keys(CATEGORY_CONFIG) as Category[]).map(
+      <Grid
+        container
+        spacing={3}
+      >
+        {/* CATEGORY MENU */}
+        <Grid
+          item
+          xs={12}
+          md={3}
+        >
+          <Paper>
+            <List>
+              {(Object.keys(
+                CATEGORY_CONFIG,
+              ) as Category[]).map(
                 (item) => (
                   <ListItemButton
                     key={item}
-                    selected={category === item}
-                    onClick={() => setCategory(item)}
-                    sx={{
-                      borderRadius: 2,
-                      mb: 0.5,
-                    }}
+                    selected={
+                      category === item
+                    }
+                    onClick={() =>
+                      setCategory(item)
+                    }
                   >
                     <ListItemIcon>
-                      {CATEGORY_CONFIG[item].icon}
+                      {
+                        CATEGORY_CONFIG[item]
+                          .icon
+                      }
                     </ListItemIcon>
 
                     <ListItemText
-                      primary={CATEGORY_CONFIG[item].label}
+                      primary={
+                        CATEGORY_CONFIG[item]
+                          .label
+                      }
                     />
                   </ListItemButton>
                 ),
@@ -205,112 +440,170 @@ export default function AISnapshots() {
           </Paper>
         </Grid>
 
-        {/* SNAPSHOT CONTENT */}
-        <Grid item xs={12} md={9.5}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="center"
-            sx={{ mb: 2 }}
+        {/* SNAPSHOTS */}
+        <Grid
+          item
+          xs={12}
+          md={9}
+        >
+          <Grid
+            container
+            spacing={2}
           >
-            <Typography variant="h6">
-              {CATEGORY_CONFIG[category].label}
-            </Typography>
-
-            {loading && <CircularProgress size={22} />}
-          </Stack>
-
-          {snapshots.length === 0 && !loading && (
-            <Paper sx={{ p: 5, textAlign: "center" }}>
-              <Typography
-                variant="body1"
-                color="text.secondary"
-              >
-                No AI snapshots available for this category.
-              </Typography>
-            </Paper>
-          )}
-
-          <Grid container spacing={2}>
-            {snapshots.map((snapshot) => (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                lg={4}
-                key={`${snapshot.category}-${snapshot.filename}-${snapshot.timestamp}`}
-              >
-                <Card>
-                  <CardMedia
-                    component="img"
-                    image={imageUrl(snapshot)}
-                    alt={snapshotLabel(snapshot)}
-                    onClick={() => setSelectedSnapshot(snapshot)}
+            {snapshots.map(
+              (snapshot) => (
+                <Grid
+                  item
+                  xs={12}
+                  sm={6}
+                  md={4}
+                  lg={3}
+                  key={`${snapshot.category}-${snapshot.filename}`}
+                >
+                  <Card
                     sx={{
-                      height: 220,
-                      objectFit: "cover",
-                      backgroundColor: "#111",
                       cursor: "pointer",
+                      height: "100%",
                     }}
-                  />
+                    onClick={() =>
+                      setSelectedSnapshot(
+                        snapshot,
+                      )
+                    }
+                  >
+                    <CardMedia
+                      component="img"
+                      image={imageUrl(
+                        snapshot,
+                      )}
+                      alt={
+                        snapshot.filename
+                      }
+                      sx={{
+                        width: "100%",
+                        aspectRatio: "4 / 3",
+                        objectFit: "cover",
+                      }}
+                    />
 
-                  <CardContent>
-                    <Stack spacing={1}>
+                    <CardContent>
                       <Typography
                         variant="subtitle1"
-                        fontWeight={700}
+                        fontWeight={600}
                       >
-                        {snapshotLabel(snapshot)}
+                        {snapshotLabel(
+                          snapshot,
+                          category,
+                        )}
                       </Typography>
 
                       <Typography
                         variant="body2"
                         color="text.secondary"
+                        sx={{
+                          wordBreak:
+                            "break-word",
+                        }}
                       >
-                        File: {snapshot.filename}
+                        {
+                          snapshot.filename
+                        }
                       </Typography>
 
                       <Typography
-                        variant="body2"
+                        variant="caption"
                         color="text.secondary"
                       >
-                        {formatTimestamp(snapshot.timestamp)}
+                        {formatTimestamp(
+                          snapshot.timestamp,
+                        )}
                       </Typography>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ),
+            )}
+
+            {!loading &&
+              snapshots.length === 0 && (
+                <Grid
+                  item
+                  xs={12}
+                >
+                  <Paper
+                    sx={{
+                      p: 4,
+                      textAlign: "center",
+                    }}
+                  >
+                    <Typography color="text.secondary">
+                      No snapshots available
+                    </Typography>
+                  </Paper>
+                </Grid>
+              )}
           </Grid>
         </Grid>
       </Grid>
 
+      {/* IMAGE PREVIEW */}
       <Dialog
-        open={selectedSnapshot !== null}
-        onClose={() => setSelectedSnapshot(null)}
-        maxWidth="lg"
+        open={Boolean(
+          selectedSnapshot,
+        )}
+        onClose={() =>
+          setSelectedSnapshot(null)
+        }
+        maxWidth="md"
         fullWidth
       >
         {selectedSnapshot && (
-          <Box
-            sx={{
-              backgroundColor: "#111",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              p: 1,
-            }}
-          >
-            <Box
+          <Box>
+            <CardMedia
               component="img"
-              src={imageUrl(selectedSnapshot)}
-              alt={snapshotLabel(selectedSnapshot)}
+              image={imageUrl(
+                selectedSnapshot,
+              )}
+              alt={
+                selectedSnapshot.filename
+              }
               sx={{
-                maxWidth: "100%",
+                width: "100%",
                 maxHeight: "80vh",
+                maxWidth: "100%",
                 objectFit: "contain",
               }}
             />
+
+            <Box sx={{ p: 2 }}>
+              <Typography
+                variant="h6"
+                fontWeight={600}
+              >
+                {snapshotLabel(
+                  selectedSnapshot,
+                  category,
+                )}
+              </Typography>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
+                {
+                  selectedSnapshot.filename
+                }
+              </Typography>
+
+              <Typography
+                variant="caption"
+                color="text.secondary"
+              >
+                {formatTimestamp(
+                  selectedSnapshot.timestamp,
+                )}
+              </Typography>
+            </Box>
           </Box>
         )}
       </Dialog>

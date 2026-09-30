@@ -36,7 +36,7 @@ services:
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:8080}
-      DEVICE_OFFLINE_TIMEOUT_SECONDS: 5
+      DEVICE_OFFLINE_TIMEOUT_SECONDS: 15
       API_KEY: ${API_KEY:-}
       AUTH_USERNAME: ${AUTH_USERNAME:-Radiantech-Dashboard}
       AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:-}

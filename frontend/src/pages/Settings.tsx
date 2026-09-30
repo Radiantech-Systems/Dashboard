@@ -6,7 +6,7 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
 
   return (
-    <Stack spacing={3} maxWidth={640}>
+    <Stack spacing={3} sx={{ width: "100%", maxWidth: 640, minWidth: 0 }}>
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>Connection</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

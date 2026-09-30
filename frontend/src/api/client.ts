@@ -10,8 +10,6 @@ import type {
 export const API_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-export const JETSON_VIDEO_URL =
-  import.meta.env.VITE_JETSON_VIDEO_URL || "http://192.168.1.155:5000";
 
 export const WS_URL =
   import.meta.env.VITE_WS_URL ||
@@ -215,24 +213,98 @@ export function buildTemperatureExportUrl(params: {
 // Recorded Footage
 // =========================
 
-export async function getFootage(_params: {
+export async function getFootage(params: {
   deviceId?: string;
   range?: Exclude<RangePreset, "custom">;
   start?: string;
   end?: string;
 }): Promise<FootageClip[]> {
-  const { data } = await axios.get(
-    `${JETSON_VIDEO_URL}/videos`,
+  const deviceId = params.deviceId || "jetson-orin-01";
+
+  // Create a metadata request for the Jetson.
+  const { data: request } = await client.post(
+    "/video-commands/request",
     {
-      timeout: 8000,
+      device_id: deviceId,
+      since: null,
     }
   );
 
-  return data.map((video: { name: string; path: string }) => ({
-    name: video.name,
-    url: `/video/${video.path}`,
-    path: video.path,
-  }));
+  const requestId = request.request_id;
+
+  // Wait for the Jetson to return metadata.
+  const deadline = Date.now() + 10000;
+
+  while (Date.now() < deadline) {
+    const { data: result } = await client.get(
+      `/video-commands/result/${requestId}`
+    );
+
+    if (result.status === "ready") {
+      const videos = result.data?.videos || [];
+
+      let clips: FootageClip[] = videos.map(
+        (video: {
+          name: string;
+          path: string;
+          size: number;
+          modified: string;
+        }) => ({
+          id: stableFootageId(video.name),
+          device_id: result.device_id || deviceId,
+          filename: video.name,
+          started_at: video.modified,
+          duration_seconds: null,
+          size_bytes: video.size,
+          url: `/video/${encodeURIComponent(video.path)}`,
+        })
+      );
+
+      // Apply the existing range buttons locally.
+      if (params.range) {
+        const now = Date.now();
+
+        const rangeMs: Record<
+          Exclude<RangePreset, "custom">,
+          number
+        > = {
+          last_hour: 60 * 60 * 1000,
+          last_day: 24 * 60 * 60 * 1000,
+          last_week: 7 * 24 * 60 * 60 * 1000,
+        };
+
+        const cutoff = now - rangeMs[params.range];
+
+        clips = clips.filter(
+          (clip) =>
+            new Date(clip.started_at).getTime() >= cutoff
+        );
+      }
+
+      return clips;
+    }
+
+    await new Promise((resolve) =>
+      setTimeout(resolve, 500)
+    );
+  }
+
+  return [];
+}
+
+function stableFootageId(filename: string): number {
+  let hash = 0;
+
+  for (let i = 0; i < filename.length; i++) {
+    hash =
+      (hash << 5) -
+      hash +
+      filename.charCodeAt(i);
+
+    hash |= 0;
+  }
+
+  return Math.abs(hash);
 }
 
 export function footageClipUrl(relativeUrl: string): string {
@@ -243,7 +315,11 @@ export function footageClipUrl(relativeUrl: string): string {
     return relativeUrl;
   }
 
-  return `${JETSON_VIDEO_URL}${relativeUrl}`;
+  const cleanPath = relativeUrl
+    .replace(/^\/video\//, "")
+    .replace(/^\/+/, "");
+
+  return `${API_URL}/video-stream/jetson-orin-01/${cleanPath}`;
 }
 
 

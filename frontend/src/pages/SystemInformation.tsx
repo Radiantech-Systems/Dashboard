@@ -3,9 +3,9 @@ import type { useTelemetrySocket } from "../hooks/useTelemetrySocket";
 
 function Row({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
-    <Stack direction="row" justifyContent="space-between" sx={{ py: 1.25 }}>
-      <Typography variant="body2" color="text.secondary">{label}</Typography>
-      <Typography variant="body2" fontWeight={600}>{value ?? "--"}</Typography>
+    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={0.5} sx={{ py: 1.25, minWidth: 0 }}>
+      <Typography variant="body2" color="text.secondary" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>{label}</Typography>
+      <Typography variant="body2" fontWeight={600} sx={{ minWidth: 0, overflowWrap: "anywhere", wordBreak: "break-word", textAlign: { xs: "left", sm: "right" } }}>{value ?? "--"}</Typography>
     </Stack>
   );
 }

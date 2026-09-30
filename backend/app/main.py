@@ -34,6 +34,9 @@ from app.routers import (
     temperature,
     footage,
     ai_snapshots,
+    snapshot_commands,
+    video_commands,
+    video_stream
 )
 
 logger = get_logger("main")
@@ -101,6 +104,9 @@ app.include_router(network.router)
 app.include_router(temperature.router)
 app.include_router(footage.router)
 app.include_router(ai_snapshots.router)
+app.include_router(snapshot_commands.router)
+app.include_router(video_commands.router)
+app.include_router(video_stream.router)
 
 # Serve recorded clips as static files for the <video> player.
 # Not gated by API_KEY (same posture as the MediaMTX HLS stream) —

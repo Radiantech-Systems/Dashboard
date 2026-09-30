@@ -5,15 +5,16 @@ rtspAddress: :8554
 
 hls: true
 hlsAddress: :8888
-hlsAllowOrigins: ["http://18.60.214.114:8080"]
+hlsAllowOrigins: ["https://radiantech-dashboard.radiantechsys.com"]
 hlsAlwaysRemux: true
 
 paths:
-  camera-001:
-    source: publisher
 
   jetson1_raw:
     source: publisher
 
   jetson1_ai:
+    source: publisher
+
+  sliced_test:
     source: publisher
