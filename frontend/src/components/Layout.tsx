@@ -28,7 +28,7 @@ import MemoryIcon from "@mui/icons-material/MemoryOutlined";
 import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 import MenuIcon from "@mui/icons-material/Menu";
-
+import CompanyWatermark from "./CompanyWatermark";
 import type { ConnectionStatus } from "../hooks/useTelemetrySocket";
 
 const DRAWER_WIDTH = 260;
@@ -360,6 +360,7 @@ export default function Layout({
                 variant="h6"
                 noWrap
                 sx={{
+
                   minWidth: 0,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -401,6 +402,7 @@ export default function Layout({
           }}
         >
           {children}
+          <CompanyWatermark />
         </Box>
       </Box>
     </Box>

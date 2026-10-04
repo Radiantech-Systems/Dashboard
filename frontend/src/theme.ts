@@ -5,8 +5,8 @@ const theme = createTheme({
     mode: "dark",
 
     background: {
-      default: "#0b0f14",
-      paper: "#121824",
+      default: "#08141c",
+      paper: "#101f2a",
     },
 
     primary: {
@@ -104,7 +104,40 @@ const theme = createTheme({
           overflowX: "hidden",
         },
 
+
+        ".page-content": {
+          isolation: "isolate",
+          position: "relative",
+          minHeight: "calc(100dvh - 64px)",
+          backgroundColor: "#08141c",
+        },
+
+        ".page-content::before": {
+          content: '""',
+          position: "absolute",
+          top: "54%",
+          left: "50%",
+          width: "42%",
+          aspectRatio: "1 / 1",
+          transform: "translate(-50%, -50%)",
+          backgroundImage: 'url("/radiantech-logo.png")',
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center",
+          backgroundSize: "contain",
+          opacity: 0.16,
+          mixBlendMode: "screen",
+          pointerEvents: "none",
+          zIndex: 0,
+        },
+
+        ".page-content > *": {
+          position: "relative",
+          zIndex: 1,
+        },
+
         "#root": {
+          position: "relative",
+          zIndex: 1,
           width: "100%",
           minHeight: "100dvh",
           overflowX: "hidden",
@@ -137,6 +170,7 @@ const theme = createTheme({
     MuiPaper: {
       styleOverrides: {
         root: {
+          backgroundColor: "rgba(16, 31, 42, 0.72)",
           backgroundImage: "none",
           border: "1px solid rgba(255,255,255,0.06)",
           minWidth: 0,
@@ -148,6 +182,7 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
+          backgroundColor: "rgba(16, 31, 42, 0.72)",
           backgroundImage: "none",
           border: "1px solid rgba(255,255,255,0.06)",
           minWidth: 0,
