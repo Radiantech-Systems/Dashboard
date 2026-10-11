@@ -17,12 +17,15 @@ import {
   Paper,
   Stack,
   Typography,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 
 import DirectionsCarOutlinedIcon from "@mui/icons-material/DirectionsCarOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
+import SearchIcon from "@mui/icons-material/Search";
 
 import { API_URL } from "../api/client";
 
@@ -127,6 +130,7 @@ function formatTimestamp(timestamp: string): string {
 export default function AISnapshots() {
   const [category, setCategory] =
     useState<Category>("vehicle");
+  const [search, setSearch] = useState("");
 
   /*
    * Keep all categories in state.
@@ -365,6 +369,18 @@ useEffect(() => {
         ? snapshotData.vehicles
         : snapshotData.others;
 
+  const filteredSnapshots = snapshots.filter((snapshot) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+
+    return [
+      snapshot.filename,
+      snapshot.category,
+      snapshot.timestamp,
+      formatTimestamp(snapshot.timestamp),
+    ].some((value) => value.toLowerCase().includes(query));
+  });
+
   return (
     <Box>
       <Stack
@@ -384,7 +400,7 @@ useEffect(() => {
 
         <Chip
           size="small"
-          label={`${snapshots.length} snapshots`}
+          label={`${filteredSnapshots.length} snapshots`}
         />
 
         {loading && (
@@ -446,11 +462,27 @@ useEffect(() => {
           xs={12}
           md={9}
         >
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search by filename, category, or date..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ mb: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+
           <Grid
             container
             spacing={2}
           >
-            {snapshots.map(
+            {filteredSnapshots.map(
               (snapshot) => (
                 <Grid
                   item
@@ -525,7 +557,7 @@ useEffect(() => {
             )}
 
             {!loading &&
-              snapshots.length === 0 && (
+              filteredSnapshots.length === 0 && (
                 <Grid
                   item
                   xs={12}
@@ -537,7 +569,9 @@ useEffect(() => {
                     }}
                   >
                     <Typography color="text.secondary">
-                      No snapshots available
+                      {search.trim()
+                        ? "No snapshots match your search."
+                        : "No snapshots available"}
                     </Typography>
                   </Paper>
                 </Grid>

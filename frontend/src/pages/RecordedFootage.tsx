@@ -21,12 +21,15 @@ import {
   IconButton,
   Tooltip,
   Snackbar,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutlineOutlined";
 import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
 import LinkIcon from "@mui/icons-material/LinkOutlined";
 import OpenInNewIcon from "@mui/icons-material/OpenInNewOutlined";
+import SearchIcon from "@mui/icons-material/Search";
 
 import { getFootage, footageClipUrl } from "../api/client";
 import type { RangePreset } from "../api/client";
@@ -62,6 +65,19 @@ export default function RecordedFootage() {
     useState<FootageClip | null>(null);
 
   const [copied, setCopied] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filteredClips = clips.filter((clip) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+
+    return [
+      clip.filename,
+      clip.device_id,
+      clip.started_at,
+      new Date(clip.started_at).toLocaleString(),
+    ].some((value) => value.toLowerCase().includes(query));
+  });
 
   function copyClipLink(clip: FootageClip) {
     navigator.clipboard?.writeText(footageClipUrl(clip.url));
@@ -113,8 +129,8 @@ export default function RecordedFootage() {
 
               <Chip
                 size="small"
-                label={`${clips.length} clip${
-                  clips.length === 1 ? "" : "s"
+                label={`${filteredClips.length} clip${
+                  filteredClips.length === 1 ? "" : "s"
                 }`}
               />
             </Stack>
@@ -149,6 +165,22 @@ export default function RecordedFootage() {
             {loading ? " (refreshing…)" : ""}
           </Typography>
 
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Search by filename, device, or date..."
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{ mb: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+
           {/* Responsive table */}
           <TableContainer
             sx={{
@@ -177,7 +209,7 @@ export default function RecordedFootage() {
               </TableHead>
 
               <TableBody>
-                {clips.map((clip) => (
+                {filteredClips.map((clip) => (
                   <TableRow key={clip.id} hover>
                     <TableCell>
                       {new Date(
@@ -250,16 +282,16 @@ export default function RecordedFootage() {
                   </TableRow>
                 ))}
 
-                {clips.length === 0 && (
+                {filteredClips.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5}>
                       <Typography
                         variant="body2"
                         color="text.secondary"
                       >
-                        No clips for this range yet.
-                        Make sure footage_recorder.py is
-                        running.
+                        {search.trim()
+                          ? "No clips match your search."
+                          : "No clips for this range yet. Make sure footage_recorder.py is running."}
                       </Typography>
                     </TableCell>
                   </TableRow>
