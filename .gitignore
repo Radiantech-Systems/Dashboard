@@ -31,3 +31,15 @@ frontend/dist/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local backup and safety copies
+*.bak
+*.backup*
+*.before-*
+*.pre-*
+*.broken-backup
+backups/
+water-mark logo.png
+
+# Generated TypeScript build cache
+*.tsbuildinfo
