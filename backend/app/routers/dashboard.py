@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.security import verify_dashboard_auth
+from app.security import require_page_access
 from app.models import Device
 from app.websocket_manager import latest_store
 
@@ -11,7 +11,7 @@ router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/dashboard")
-def get_dashboard(db: Session = Depends(get_db), _auth=Depends(verify_dashboard_auth)):
+def get_dashboard(db: Session = Depends(get_db), _auth=Depends(require_page_access("dashboard"))):
     devices = db.query(Device).all()
     result = []
     for d in devices:

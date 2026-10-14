@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.security import verify_api_key, verify_dashboard_auth
+from app.security import verify_api_key, require_page_access
 from app.snapshot_commands import snapshot_commands
 
 
@@ -21,7 +21,7 @@ class SnapshotResult(BaseModel):
 @router.post("/request")
 def request_snapshots(
     request: SnapshotRequest,
-    _auth=Depends(verify_dashboard_auth),
+    _auth=Depends(require_page_access("violations")),
 ):
     request_id = snapshot_commands.create_request(request.device_id)
 
@@ -86,7 +86,7 @@ def submit_snapshot_result(
 @router.get("/result/{request_id}")
 def get_snapshot_result(
     request_id: str,
-    _auth=Depends(verify_dashboard_auth),
+    _auth=Depends(require_page_access("violations")),
 ):
     result = snapshot_commands.get_result(request_id)
 

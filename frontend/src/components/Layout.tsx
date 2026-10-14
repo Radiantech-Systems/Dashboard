@@ -21,64 +21,28 @@ import DashboardIcon from "@mui/icons-material/DashboardOutlined";
 import InfoIcon from "@mui/icons-material/InfoOutlined";
 import SpeedIcon from "@mui/icons-material/SpeedOutlined";
 import BoltIcon from "@mui/icons-material/BoltOutlined";
-import WifiIcon from "@mui/icons-material/WifiOutlined";
+import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
+import MonitorIcon from "@mui/icons-material/Monitor";
 import ThermostatIcon from "@mui/icons-material/ThermostatOutlined";
 import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 import MemoryIcon from "@mui/icons-material/MemoryOutlined";
 import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
+import TrafficIcon from "@mui/icons-material/Traffic";
 import MenuIcon from "@mui/icons-material/Menu";
+import PeopleAltIcon from "@mui/icons-material/PeopleAltOutlined";
 import CompanyWatermark from "./CompanyWatermark";
 import type { ConnectionStatus } from "../hooks/useTelemetrySocket";
 
 const DRAWER_WIDTH = 260;
 
 const NAV_ITEMS = [
-  {
-    label: "Dashboard",
-    path: "/",
-    icon: <DashboardIcon />,
-  },
-  {
-    label: "System Information",
-    path: "/system-information",
-    icon: <InfoIcon />,
-  },
-  {
-    label: "Performance",
-    path: "/performance",
-    icon: <SpeedIcon />,
-  },
-  {
-    label: "Power",
-    path: "/power",
-    icon: <BoltIcon />,
-  },
-  {
-    label: "Network & Cameras",
-    path: "/network-cameras",
-    icon: <WifiIcon />,
-  },
-  {
-    label: "Temperature History",
-    path: "/temperature-history",
-    icon: <ThermostatIcon />,
-  },
-  {
-    label: "Sliced Footage",
-    path: "/sliced-footage",
-    icon: <MovieOutlinedIcon />,
-  },
-  {
-    label: "AI Snapshots",
-    path: "/ai-snapshots",
-    icon: <CameraAltOutlinedIcon />,
-  },
-  {
-    label: "Settings",
-    path: "/settings",
-    icon: <SettingsIcon />,
-  },
+  { label: "Cameras", path: "/network-cameras", icon: <VideocamOutlinedIcon />, permission: "network_cameras" },
+  { label: "Live CCTV", path: "/live-cctv", icon: <MonitorIcon />, permission: "live_cctv" },
+  { label: "Sliced Footage", path: "/sliced-footage", icon: <MovieOutlinedIcon />, permission: "sliced_footage" },
+  { label: "Violations", path: "/ai-snapshots", icon: <CameraAltOutlinedIcon />, permission: "violations" },
+  { label: "Traffic Signal Control", path: "/traffic-signal-control", icon: <TrafficIcon />, permission: "traffic_signal_control" },
+  { label: "Settings", path: "/settings", icon: <SettingsIcon />, permission: "settings" },
 ];
 
 function StatusChip({
@@ -119,13 +83,32 @@ function StatusChip({
 export default function Layout({
   children,
   status,
+  userRole = "",
+  permissions = [],
 }: {
   children: ReactNode;
   status: ConnectionStatus;
+  userRole?: string;
+  permissions?: string[];
 }) {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
+  const canSee = (permission: string) =>
+    userRole === "Admin" || permissions.includes(permission);
+
+  const visibleNavItems = [
+    ...NAV_ITEMS.filter((item) => canSee(item.permission)),
+    ...(userRole === "Admin"
+      ? [{
+          label: "User Management",
+          path: "/user-management",
+          icon: <PeopleAltIcon />,
+          permission: "user_management",
+        }]
+      : []),
+  ];
+
 
   /*
    * The navigation becomes a drawer when there isn't
@@ -134,10 +117,16 @@ export default function Layout({
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [deviceStatusOpen, setDeviceStatusOpen] = useState(
+    ["/", "/system-information", "/temperature-history", "/network"].includes(location.pathname)
+  );
+
 
   const currentPage =
-    NAV_ITEMS.find((item) => item.path === location.pathname)?.label ??
-    "Dashboard";
+    (location.pathname === "/network-cameras" ? "Cameras" : undefined) ??
+    visibleNavItems.find((item) => item.path === location.pathname)?.label ??
+    ({ "/": "Health", "/system-information": "System Information", "/temperature-history": "Temperature History", "/network": "Network" } as Record<string, string>)[location.pathname] ??
+    "Health";
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -157,30 +146,27 @@ export default function Layout({
     >
       <Toolbar
         sx={{
-          gap: 1,
-          px: { xs: 2, md: 2.5 },
-          minHeight: 64,
+          gap: 1.25,
+          px: { xs: 1.5, md: 2 },
+          minHeight: 72,
+          boxSizing: "border-box",
         }}
       >
-        <MemoryIcon
+        <Box
+          component="img"
+          src="/radiantech-logo-watermark.png"
+          alt="Radiantech System logo"
           sx={{
-            color: "primary.main",
+            width: 130,
+            height: 52,
+            objectFit: "contain",
             flexShrink: 0,
+            display: "block",
+            background: "transparent",
           }}
         />
 
-        <Typography
-          variant="subtitle1"
-          fontWeight={700}
-          noWrap
-          sx={{
-            minWidth: 0,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          Jetson Telemetry
-        </Typography>
+        
       </Toolbar>
 
       <List
@@ -189,7 +175,53 @@ export default function Layout({
           pb: 2,
         }}
       >
-        {NAV_ITEMS.map((item) => (
+        <ListItemButton
+          selected={["/", "/system-information", "/temperature-history", "/network"].includes(location.pathname)}
+          onClick={() => setDeviceStatusOpen((open) => !open)}
+          sx={{
+            minHeight: 48,
+            borderRadius: 2,
+            mb: 0.5,
+            "&.Mui-selected": {
+              backgroundColor: "rgba(57,214,200,0.12)",
+              color: "primary.main",
+              "& .MuiListItemIcon-root": { color: "primary.main" },
+            },
+          }}
+        >
+          <ListItemIcon sx={{ minWidth: 40 }}><DashboardIcon /></ListItemIcon>
+          <ListItemText primary="Device Status" />
+          <Typography component="span">{deviceStatusOpen ? "▾" : "▸"}</Typography>
+        </ListItemButton>
+
+        {deviceStatusOpen && [
+          { label: "Health", path: "/", icon: <SpeedIcon />, permission: "dashboard" },
+          { label: "System Information", path: "/system-information", icon: <InfoIcon />, permission: "system_information" },
+          { label: "Temperature History", path: "/temperature-history", icon: <ThermostatIcon />, permission: "temperature_history" },
+          { label: "Network", path: "/network", icon: <MonitorIcon />, permission: "network" },
+        ].filter((item) => canSee(item.permission)).map((item) => (
+          <ListItemButton
+            key={item.path}
+            selected={location.pathname === item.path}
+            onClick={() => handleNavigation(item.path)}
+            sx={{
+              minHeight: 44,
+              pl: 5,
+              borderRadius: 2,
+              mb: 0.5,
+              "&.Mui-selected": {
+                backgroundColor: "rgba(57,214,200,0.12)",
+                color: "primary.main",
+                "& .MuiListItemIcon-root": { color: "primary.main" },
+              },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 36 }}>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.label} primaryTypographyProps={{ noWrap: true }} />
+          </ListItemButton>
+        ))}
+
+        {visibleNavItems.map((item) => (
           <ListItemButton
             key={item.path}
             selected={location.pathname === item.path}

@@ -74,3 +74,18 @@ class LatestTelemetryStore:
 
 manager = ConnectionManager()
 latest_store = LatestTelemetryStore()
+
+class TrafficSignalStateStore:
+    """Stores only the latest traffic signal state in memory."""
+
+    def __init__(self) -> None:
+        self._state: Dict[str, Any] | None = None
+
+    def set(self, state: Dict[str, Any]) -> None:
+        self._state = state
+
+    def get(self) -> Dict[str, Any] | None:
+        return self._state
+
+
+traffic_signal_store = TrafficSignalStateStore()

@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 
-from app.security import verify_api_key, verify_dashboard_auth
+from app.security import verify_api_key, require_page_access
 from app.video_stream import video_streams
 
 
@@ -25,7 +25,7 @@ async def stream_video(
     device_id: str,
     path: str,
     request: Request,
-    _auth=Depends(verify_dashboard_auth),
+    _auth=Depends(require_page_access("sliced_footage")),
 ):
     """
     Browser requests one specific MP4.

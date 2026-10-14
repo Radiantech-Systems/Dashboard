@@ -1,0 +1,326 @@
+/* ===== Global responsive login page ===== */
+
+.login-page {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  color: #f4f9ff;
+  background-color: #04172b;
+  background-image: url("/login-scene.png");
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+/* The background artwork already contains these brand elements */
+.company-logo,
+.company-name,
+.product-brand {
+  display: none !important;
+}
+
+.login-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: clamp(10px, 1.6vw, 24px);
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
+.company-brand {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Center the card on every device */
+.login-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: clamp(96px, 13vh, 132px) 16px 24px;
+  box-sizing: border-box;
+}
+
+/* Fluid width: never wider than 440px or the available screen */
+.login-card {
+  width: min(440px, 100%) !important;
+  max-width: 440px !important;
+  min-width: 0 !important;
+  margin: auto;
+  padding: clamp(20px, 2.5vw, 32px) !important;
+  box-sizing: border-box;
+  border: 1px solid rgba(27, 221, 255, 0.42);
+  border-radius: clamp(16px, 2vw, 24px) !important;
+  color: #f4f9ff !important;
+  background: rgba(3, 21, 39, 0.95) !important;
+  box-shadow: 0 16px 48px rgba(0, 8, 20, 0.35),
+              0 0 24px rgba(0, 174, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.login-title {
+  width: 100%;
+  margin: 0 0 clamp(18px, 2.5vh, 25px);
+  text-align: center;
+}
+
+.login-title h1 {
+  margin: 0;
+  color: #f7faff;
+  font-size: clamp(22px, 2.1vw, 30px);
+  font-weight: 750;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.login-title-accent {
+  display: block;
+  width: 42px;
+  height: 3px;
+  margin: 12px auto 0;
+  border-radius: 3px;
+  background: #00e5e8;
+  box-shadow: 0 0 12px rgba(0, 229, 232, 0.5);
+}
+
+/* Form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: clamp(13px, 2vh, 18px);
+}
+
+.login-form > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.login-field {
+  width: 100%;
+  min-width: 0;
+}
+
+.login-field .MuiInputLabel-root {
+  color: #a7b8ce;
+}
+
+.login-field .MuiInputLabel-root.Mui-focused {
+  color: #00dce9;
+}
+
+.login-field .MuiOutlinedInput-root {
+  min-height: 51px;
+  color: #f5f9ff;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.login-field .MuiOutlinedInput-input {
+  min-width: 0;
+  padding-top: 13px;
+  padding-bottom: 13px;
+}
+
+.login-field .MuiOutlinedInput-notchedOutline {
+  border-color: rgba(111, 159, 196, 0.48);
+}
+
+.login-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline,
+.login-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: #08d7eb;
+}
+
+.login-field .MuiInputAdornment-root,
+.login-field .MuiIconButton-root {
+  color: #d2e8fa;
+}
+
+.field-symbol {
+  font-size: 20px;
+}
+
+.login-submit {
+  width: 100%;
+  min-width: 0;
+  min-height: 49px;
+  margin-top: 1px !important;
+  padding: 10px 14px !important;
+  border-radius: 28px !important;
+  color: #031b2c !important;
+  background: linear-gradient(100deg, #12dfe9, #00c9db) !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.4px !important;
+  box-shadow: 0 6px 22px rgba(0, 218, 233, 0.16) !important;
+}
+
+.login-submit:hover {
+  background: linear-gradient(100deg, #52f3f2, #00d6e5) !important;
+}
+
+.submit-arrow {
+  margin-left: 10px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* Tablets and phones */
+@media (max-width: 700px) {
+  .login-main {
+    padding: 90px 16px 24px;
+  }
+
+  .login-card {
+    width: min(390px, 100%) !important;
+    padding: clamp(20px, 5vw, 28px) !important;
+  }
+
+  .login-title h1 {
+    font-size: clamp(22px, 5vw, 28px);
+  }
+}
+
+/* Narrow phones */
+@media (max-width: 360px) {
+  .login-main {
+    padding: 76px 10px 18px;
+  }
+
+  .login-card {
+    padding: 18px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .login-form {
+    gap: 13px;
+  }
+
+  .login-field .MuiOutlinedInput-root {
+    min-height: 47px;
+  }
+
+  .login-submit {
+    min-height: 45px;
+    font-size: 13px !important;
+  }
+}
+
+/* Short laptop windows and landscape phones */
+@media (max-height: 600px) {
+  .login-page {
+    min-height: 100vh;
+    min-height: 100svh;
+    align-items: start;
+  }
+
+  .login-main {
+    min-height: 100vh;
+    min-height: 100svh;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+
+  .login-card {
+    padding-top: 18px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .login-title {
+    margin-bottom: 14px;
+  }
+
+  .login-title-accent {
+    margin-top: 8px;
+  }
+
+  .login-form {
+    gap: 11px;
+  }
+
+  .login-field .MuiOutlinedInput-root {
+    min-height: 44px;
+  }
+
+  .login-submit {
+    min-height: 43px;
+  }
+}
+
+/* Responsive login form */
+.login-main {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(90px, 12vh, 130px) 16px 24px;
+  box-sizing: border-box;
+}
+
+.login-card {
+  width: 100% !important;
+  max-width: 440px !important;
+  min-width: 0 !important;
+  margin: auto;
+  padding: clamp(18px, 3vw, 32px) !important;
+  box-sizing: border-box;
+}
+
+.login-form {
+  width: 100%;
+  gap: clamp(12px, 2vh, 18px);
+}
+
+.login-field {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 600px) {
+  .login-main {
+    padding: 90px 14px 22px;
+  }
+
+  .login-card {
+    max-width: 390px !important;
+    padding: 22px 18px !important;
+  }
+
+  .login-title h1 {
+    font-size: clamp(22px, 5vw, 28px);
+  }
+}
+
+@media (max-width: 360px) {
+  .login-main {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .login-card {
+    padding: 18px 14px !important;
+  }
+}

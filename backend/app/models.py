@@ -79,3 +79,35 @@ class AISnapshot(Base):
     captured_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class DashboardUser(Base):
+    """Persistent dashboard users and per-user page permissions."""
+
+    __tablename__ = "dashboard_users"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String(128), nullable=False, unique=True, index=True)
+    password_hash = Column(String(512), nullable=False)
+    role = Column(String(32), nullable=False, default="User")
+    permissions = Column(
+        __import__("sqlalchemy").JSON,
+        nullable=False,
+        default=list,
+    )
+    is_active = Column(
+        __import__("sqlalchemy").Boolean,
+        nullable=False,
+        default=True,
+    )
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )

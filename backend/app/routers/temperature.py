@@ -16,7 +16,7 @@ from app.database import get_db
 from app.models import TemperatureHistory
 from app.schemas import TemperatureHistoryOut
 from app.websocket_manager import latest_store
-from app.security import verify_dashboard_auth
+from app.security import require_page_access
 
 router = APIRouter(tags=["temperature"])
 
@@ -56,13 +56,13 @@ def get_temperature_history(
     start: Optional[datetime] = Query(None),
     end: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
-    _auth=Depends(verify_dashboard_auth),
+    _auth=Depends(require_page_access("temperature_history")),
 ):
     return _query_rows(db, device_id, range, start, end)
 
 
 @router.get("/temperature/history/live")
-def get_temperature_live(device_id: Optional[str] = Query(None), _auth=Depends(verify_dashboard_auth)):
+def get_temperature_live(device_id: Optional[str] = Query(None), _auth=Depends(require_page_access("temperature_history"))):
     """Current live temperature/cooling snapshot (not persisted separately, mirrors latest telemetry)."""
     live = latest_store.get(device_id) if device_id else latest_store.first()
     if not live:
@@ -83,7 +83,7 @@ def export_temperature_csv(
     start: Optional[datetime] = Query(None),
     end: Optional[datetime] = Query(None),
     db: Session = Depends(get_db),
-    _auth=Depends(verify_dashboard_auth),
+    _auth=Depends(require_page_access("temperature_history")),
 ):
     rows = _query_rows(db, device_id, range, start, end)
     buffer = io.StringIO()

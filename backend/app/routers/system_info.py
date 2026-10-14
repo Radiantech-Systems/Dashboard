@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Query, HTTPException, Depends
 
 from app.websocket_manager import latest_store
-from app.security import verify_dashboard_auth
+from app.security import require_page_access
 
 router = APIRouter(tags=["system-info"])
 
@@ -16,6 +16,6 @@ def _resolve(device_id: Optional[str]):
 
 
 @router.get("/system-info")
-def get_system_info(device_id: Optional[str] = Query(None), _auth=Depends(verify_dashboard_auth)):
+def get_system_info(device_id: Optional[str] = Query(None), _auth=Depends(require_page_access("system_information"))):
     live = _resolve(device_id)
     return live.get("system_info", {})

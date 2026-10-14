@@ -29,6 +29,23 @@ const client = axios.create({
 export interface AuthResponse {
   authenticated: boolean;
   username?: string;
+  role?: string;
+  permissions?: string[];
+}
+
+export interface DashboardUser {
+  id: number;
+  username: string;
+  role: string;
+  permissions: string[];
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PermissionCatalog {
+  permissions: string[];
+  role_defaults: Record<string, string[]>;
 }
 
 export async function login(
@@ -51,6 +68,43 @@ export async function getCurrentUser(): Promise<AuthResponse> {
 export async function logout(): Promise<void> {
   await client.post("/auth/logout");
 }
+
+export async function getUsers(): Promise<DashboardUser[]> {
+  const { data } = await client.get<{ users: DashboardUser[] }>("/auth/users");
+  return data.users;
+}
+
+export async function getPermissionCatalog(): Promise<PermissionCatalog> {
+  const { data } = await client.get<PermissionCatalog>("/auth/permissions");
+  return data;
+}
+
+export async function createUser(payload: {
+  username: string;
+  password: string;
+  role: string;
+  permissions: string[];
+}): Promise<DashboardUser> {
+  const { data } = await client.post<DashboardUser>("/auth/users", payload);
+  return data;
+}
+
+export async function updateUser(
+  userId: number,
+  payload: {
+    password?: string;
+    role?: string;
+    permissions?: string[];
+    is_active?: boolean;
+  }
+): Promise<DashboardUser> {
+  const { data } = await client.patch<DashboardUser>(
+    `/auth/users/${userId}`,
+    payload
+  );
+  return data;
+}
+
 
 
 // =========================

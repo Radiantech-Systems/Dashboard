@@ -13,15 +13,17 @@ import os
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Cookie, HTTPException
+from fastapi.responses import FileResponse
+from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import Base, engine, SessionLocal
 from app.models import Device, PowerEvent
-from app.websocket_manager import manager
-from app.auth import router as auth_router, _valid_session
+from app.websocket_manager import manager, traffic_signal_store
+from app.auth import router as auth_router, _valid_session, _session_identity
 from app.logger import get_logger
 
 from app.routers import (
@@ -108,19 +110,61 @@ app.include_router(snapshot_commands.router)
 app.include_router(video_commands.router)
 app.include_router(video_stream.router)
 
-# Serve recorded clips as static files for the <video> player.
-# Not gated by API_KEY (same posture as the MediaMTX HLS stream) —
-# only relevant once this is exposed beyond a trusted LAN.
+# Stored media must use the dashboard session and page permissions.
+# Resolve every requested path under its configured storage root to prevent
+# path traversal. Jetson API-key upload routes remain separate and unchanged.
 os.makedirs(settings.FOOTAGE_STORAGE_DIR, exist_ok=True)
-app.mount("/footage-files", StaticFiles(directory=settings.FOOTAGE_STORAGE_DIR), name="footage-files")
-
 os.makedirs(settings.AI_SNAPSHOT_STORAGE_DIR, exist_ok=True)
 
-app.mount(
-    "/ai-snapshot-files",
-    StaticFiles(directory=settings.AI_SNAPSHOT_STORAGE_DIR),
-    name="ai-snapshot-files",
-)
+
+def _authorized_media_path(session_id: str | None, permission: str,
+                           storage_dir: str, relative_path: str) -> Path:
+    identity = _session_identity(session_id)
+    if not identity:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    if identity.get("role") != "Admin" and permission not in identity.get("permissions", []):
+        raise HTTPException(status_code=403, detail="Page access denied")
+
+    root = Path(storage_dir).resolve()
+    target = (root / relative_path).resolve()
+
+    if not target.is_relative_to(root):
+        raise HTTPException(status_code=400, detail="Invalid file path")
+
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return target
+
+
+@app.get("/footage-files/{device_id}/{filename:path}")
+def get_footage_file(
+    device_id: str,
+    filename: str,
+    telemetry_session: str | None = Cookie(default=None),
+):
+    target = _authorized_media_path(
+        telemetry_session,
+        "sliced_footage",
+        settings.FOOTAGE_STORAGE_DIR,
+        str(Path(device_id) / filename),
+    )
+    return FileResponse(target)
+
+
+@app.get("/ai-snapshot-files/{relative_path:path}")
+def get_ai_snapshot_file(
+    relative_path: str,
+    telemetry_session: str | None = Cookie(default=None),
+):
+    target = _authorized_media_path(
+        telemetry_session,
+        "violations",
+        settings.AI_SNAPSHOT_STORAGE_DIR,
+        relative_path,
+    )
+    return FileResponse(target)
 
 @app.get("/health")
 def health():
@@ -143,11 +187,88 @@ async def websocket_telemetry(websocket: WebSocket):
 
     await manager.connect(websocket)
 
+    # Send the authoritative shared state to this client.
+    current_signal_state = traffic_signal_store.get()
+    if current_signal_state is None:
+        current_signal_state = {
+            "lane_1": "RED",
+            "lane_2": "RED",
+            "lane_3": "RED",
+            "lane_4": "RED",
+        }
+        traffic_signal_store.set(current_signal_state)
+
+    await websocket.send_json({
+        "type": "traffic_signal_state",
+        "lane_states": current_signal_state,
+    })
+
     try:
         while True:
-            # Dashboard clients don't need to send anything;
-            # keep the connection alive and drain client pings.
-            await websocket.receive_text()
+            raw_message = await websocket.receive_text()
+
+            try:
+                import json
+                message = json.loads(raw_message)
+            except (json.JSONDecodeError, TypeError):
+                await websocket.send_json({
+                    "type": "traffic_signal_error",
+                    "error": "Invalid JSON message",
+                })
+                continue
+
+            if not isinstance(message, dict):
+                continue
+
+            if message.get("type") != "traffic_signal_state":
+                # Preserve compatibility with existing dashboard messages.
+                continue
+
+            # Only Admins and users explicitly granted traffic-signal
+            # control may modify the shared signal state.
+            identity = _session_identity(telemetry_session)
+            if (
+                not identity
+                or (
+                    identity.get("role") != "Admin"
+                    and "traffic_signal_control" not in identity.get("permissions", [])
+                )
+            ):
+                await websocket.send_json({
+                    "type": "traffic_signal_error",
+                    "error": "Traffic signal control permission required",
+                })
+                continue
+
+            lane_states = message.get("lane_states")
+            expected_lanes = {"lane_1", "lane_2", "lane_3", "lane_4"}
+
+            if (
+                not isinstance(lane_states, dict)
+                or set(lane_states.keys()) != expected_lanes
+                or any(state not in {"RED", "GREEN"} for state in lane_states.values())
+                or sum(state == "GREEN" for state in lane_states.values()) > 1
+            ):
+                await websocket.send_json({
+                    "type": "traffic_signal_error",
+                    "error": "Invalid lane states; provide four lanes and at most one GREEN lane",
+                })
+                continue
+
+            # Store the authoritative state for the ASRock HTTP response.
+            traffic_signal_store.set(lane_states)
+
+            # Broadcast the shared state to all connected clients.
+            await manager.broadcast({
+                "type": "traffic_signal_state",
+                "lane_states": lane_states,
+            })
+
+            # Acknowledge the originating client.
+            await websocket.send_json({
+                "type": "traffic_signal_accepted",
+                "lane_states": lane_states,
+            })
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)

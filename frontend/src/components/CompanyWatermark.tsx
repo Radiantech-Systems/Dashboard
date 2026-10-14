@@ -1,8 +1,8 @@
-import { Typography } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 
 export default function CompanyWatermark() {
   return (
-    <Typography
+    <Box
       sx={{
         position: "fixed",
         right: 24,
@@ -11,14 +11,30 @@ export default function CompanyWatermark() {
         opacity: 0.35,
         pointerEvents: "none",
         userSelect: "none",
-        fontSize: "18px",
-        fontWeight: 700,
-        color: "text.primary",
-        letterSpacing: "0.02em",
-        whiteSpace: "nowrap",
+        textAlign: "right",
       }}
     >
-      Radiantech-Systems Pvt LTD
-    </Typography>
+      <Typography
+        sx={{
+          fontSize: "18px",
+          fontWeight: 700,
+          color: "text.primary",
+          letterSpacing: "0.02em",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Radian Drishti
+      </Typography>
+      <Typography
+        sx={{
+          fontSize: "11px",
+          fontWeight: 500,
+          color: "text.primary",
+          whiteSpace: "nowrap",
+        }}
+      >
+        Powered by Radian Edge Platform
+      </Typography>
+    </Box>
   );
 }

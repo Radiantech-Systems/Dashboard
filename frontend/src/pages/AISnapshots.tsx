@@ -10,26 +10,18 @@ import {
   CircularProgress,
   Divider,
   Grid,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Paper,
   Stack,
   Typography,
+  Paper,
   TextField,
   InputAdornment,
 } from "@mui/material";
 
-import DirectionsCarOutlinedIcon from "@mui/icons-material/DirectionsCarOutlined";
-import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
-import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 
 import { API_URL } from "../api/client";
 
-type Category = "vehicle" | "human" | "other";
 
 type Snapshot = {
   filename: string;
@@ -58,69 +50,20 @@ type SnapshotResultResponse = {
   data?: SnapshotData;
 };
 
-const DEVICE_ID = "jetson-orin-01";
+const DEVICE_ID = "radian-edge-asrock-01";
 
-const CATEGORY_CONFIG: Record<
-  Category,
-  {
-    label: string;
-    icon: React.ReactNode;
-  }
-> = {
-  vehicle: {
-    label: "Vehicles",
-    icon: <DirectionsCarOutlinedIcon />,
-  },
-  human: {
-    label: "People",
-    icon: <PersonOutlineOutlinedIcon />,
-  },
-  other: {
-    label: "Others",
-    icon: <CategoryOutlinedIcon />,
-  },
-};
 
 function imageUrl(snapshot: Snapshot): string {
   return `data:${snapshot.mime_type};base64,${snapshot.image}`;
 }
 
-function snapshotLabel(
-  snapshot: Snapshot,
-  selectedCategory: Category,
-): string {
-  if (selectedCategory === "human") {
-    return "Person";
-  }
-
-  if (selectedCategory === "vehicle") {
-    return "Vehicle";
-  }
-
-  const filename = snapshot.filename.toLowerCase();
-
-  if (
-    filename.startsWith("dog_") ||
-    filename.startsWith("cat_") ||
-    filename.startsWith("bird_") ||
-    filename.startsWith("horse_") ||
-    filename.startsWith("sheep_") ||
-    filename.startsWith("cow_")
-  ) {
-    return "Animal";
-  }
-
-  if (
-    filename.startsWith("laptop_") ||
-    filename.startsWith("keyboard_") ||
-    filename.startsWith("mouse_") ||
-    filename.startsWith("remote_") ||
-    filename.startsWith("cell_phone_")
-  ) {
-    return "Electronics";
-  }
-
-  return "Other";
+function snapshotLabel(snapshot: Snapshot): string {
+  const value = `${snapshot.category} ${snapshot.filename}`.toLowerCase();
+  if (/person|people|human/.test(value)) return "Person";
+  if (/vehicle|car|truck|bus|motorcycle|bicycle/.test(value)) return "Vehicle";
+  if (/dog|cat|bird|horse|sheep|cow|animal/.test(value)) return "Animal";
+  if (/laptop|keyboard|mouse|remote|cell_phone|electronics/.test(value)) return "Electronics";
+  return snapshot.category || "Snapshot";
 }
 
 function formatTimestamp(timestamp: string): string {
@@ -128,8 +71,6 @@ function formatTimestamp(timestamp: string): string {
 }
 
 export default function AISnapshots() {
-  const [category, setCategory] =
-    useState<Category>("vehicle");
   const [search, setSearch] = useState("");
 
   /*
@@ -362,17 +303,17 @@ useEffect(() => {
   /*
    * Select the correct array for the currently selected category.
    */
-  const snapshots =
-    category === "human"
-      ? snapshotData.people
-      : category === "vehicle"
-        ? snapshotData.vehicles
-        : snapshotData.others;
+  const snapshots = [
+    ...snapshotData.people,
+    ...snapshotData.vehicles,
+    ...snapshotData.others,
+  ].sort((a, b) =>
+    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
 
   const filteredSnapshots = snapshots.filter((snapshot) => {
     const query = search.trim().toLowerCase();
     if (!query) return true;
-
     return [
       snapshot.filename,
       snapshot.category,
@@ -395,7 +336,7 @@ useEffect(() => {
           variant="h5"
           fontWeight={700}
         >
-          AI Snapshots
+          Violations
         </Typography>
 
         <Chip
@@ -415,53 +356,8 @@ useEffect(() => {
         container
         spacing={3}
       >
-        {/* CATEGORY MENU */}
-        <Grid
-          item
-          xs={12}
-          md={3}
-        >
-          <Paper>
-            <List>
-              {(Object.keys(
-                CATEGORY_CONFIG,
-              ) as Category[]).map(
-                (item) => (
-                  <ListItemButton
-                    key={item}
-                    selected={
-                      category === item
-                    }
-                    onClick={() =>
-                      setCategory(item)
-                    }
-                  >
-                    <ListItemIcon>
-                      {
-                        CATEGORY_CONFIG[item]
-                          .icon
-                      }
-                    </ListItemIcon>
-
-                    <ListItemText
-                      primary={
-                        CATEGORY_CONFIG[item]
-                          .label
-                      }
-                    />
-                  </ListItemButton>
-                ),
-              )}
-            </List>
-          </Paper>
-        </Grid>
-
         {/* SNAPSHOTS */}
-        <Grid
-          item
-          xs={12}
-          md={9}
-        >
+        <Grid item xs={12} md={12}>
           <TextField
             fullWidth
             size="small"
@@ -477,7 +373,6 @@ useEffect(() => {
               ),
             }}
           />
-
           <Grid
             container
             spacing={2}
@@ -523,10 +418,7 @@ useEffect(() => {
                         variant="subtitle1"
                         fontWeight={600}
                       >
-                        {snapshotLabel(
-                          snapshot,
-                          category,
-                        )}
+                        {snapshotLabel(snapshot)}
                       </Typography>
 
                       <Typography
@@ -569,9 +461,7 @@ useEffect(() => {
                     }}
                   >
                     <Typography color="text.secondary">
-                      {search.trim()
-                        ? "No snapshots match your search."
-                        : "No snapshots available"}
+                      {search.trim() ? "No snapshots match your search." : "No snapshots available"}
                     </Typography>
                   </Paper>
                 </Grid>
@@ -604,7 +494,6 @@ useEffect(() => {
               sx={{
                 width: "100%",
                 maxHeight: "80vh",
-                maxWidth: "100%",
                 objectFit: "contain",
               }}
             />
@@ -614,10 +503,7 @@ useEffect(() => {
                 variant="h6"
                 fontWeight={600}
               >
-                {snapshotLabel(
-                  selectedSnapshot,
-                  category,
-                )}
+                {snapshotLabel(selectedSnapshot)}
               </Typography>
 
               <Typography

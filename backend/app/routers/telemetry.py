@@ -16,7 +16,7 @@ from app.database import get_db
 from app.security import verify_api_key
 from app.schemas import TelemetryPayload
 from app.models import Device, TemperatureHistory, PowerEvent
-from app.websocket_manager import manager, latest_store
+from app.websocket_manager import manager, latest_store, traffic_signal_store
 from app.logger import get_logger
 
 router = APIRouter(tags=["telemetry"])
@@ -75,4 +75,7 @@ async def ingest_telemetry(payload: TelemetryPayload, db: Session = Depends(get_
     # 4. Push to all connected dashboards in real time
     await manager.broadcast({"type": "telemetry", "device_id": device_id, "data": data})
 
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "traffic_signal_state": traffic_signal_store.get(),
+    }

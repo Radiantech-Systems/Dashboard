@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.security import verify_api_key, verify_dashboard_auth
+from app.security import verify_api_key, require_page_access
 from app.video_commands import video_commands
 
 
@@ -25,7 +25,7 @@ class VideoResult(BaseModel):
 @router.post("/request")
 def request_videos(
     request: VideoRequest,
-    _auth=Depends(verify_dashboard_auth),
+    _auth=Depends(require_page_access("sliced_footage")),
 ):
     request_id = video_commands.create_request(
         request.device_id,
@@ -95,7 +95,7 @@ def submit_video_result(
 @router.get("/result/{request_id}")
 def get_video_result(
     request_id: str,
-    _auth=Depends(verify_dashboard_auth),
+    _auth=Depends(require_page_access("sliced_footage")),
 ):
     result = video_commands.get_result(request_id)
 
