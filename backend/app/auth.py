@@ -37,18 +37,15 @@ ROLE_DEFAULTS = {
     "IT": [
         "dashboard",
         "system_information",
-        "live_cctv",
-        "network_cameras",
+        "temperature_history",
         "network",
-        "settings",
+        "network_cameras",
     ],
     "User": [
-        "dashboard",
         "live_cctv",
-        "network_cameras",
-        "ai_snapshots",
-        "sliced_footage",
         "violations",
+        "traffic_signal_control",
+        "sliced_footage",
     ],
 }
 
@@ -169,46 +166,80 @@ def _require_admin(session_id: str | None) -> None:
 
 @router.post("/login")
 def login(payload: LoginRequest, response: Response):
+    # Permanent environment-configured accounts take priority over database users.
+    fixed_accounts = [
+        (
+            settings.AUTH_IT_USERNAME,
+            settings.AUTH_IT_PASSWORD_HASH,
+            "IT",
+            ROLE_DEFAULTS["IT"],
+        ),
+        (
+            settings.AUTH_USER_USERNAME,
+            settings.AUTH_USER_PASSWORD_HASH,
+            "User",
+            ROLE_DEFAULTS["User"],
+        ),
+    ]
+
+    username = None
+    role = None
+    permissions = None
+    user_id = None
+
+    for fixed_username, fixed_hash, fixed_role, fixed_permissions in fixed_accounts:
+        if hmac.compare_digest(payload.username, fixed_username):
+            if not fixed_hash or not password_hash.verify(payload.password, fixed_hash):
+                raise HTTPException(
+                    status_code=401,
+                    detail="Invalid username or password",
+                )
+            username = fixed_username
+            role = fixed_role
+            permissions = fixed_permissions
+            break
+
     db = SessionLocal()
     try:
-        user = (
-            db.query(DashboardUser)
-            .filter(DashboardUser.username == payload.username)
-            .first()
-        )
+        if username is None:
+            user = (
+                db.query(DashboardUser)
+                .filter(DashboardUser.username == payload.username)
+                .first()
+            )
 
-        if user is not None:
-            if (
-                not user.is_active
-                or not password_hash.verify(payload.password, user.password_hash)
-            ):
-                raise HTTPException(
-                    status_code=401,
-                    detail="Invalid username or password",
+            if user is not None:
+                if (
+                    not user.is_active
+                    or not password_hash.verify(payload.password, user.password_hash)
+                ):
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Invalid username or password",
+                    )
+                role = user.role
+                permissions = user.permissions or ROLE_DEFAULTS.get(user.role, [])
+                user_id = user.id
+                username = user.username
+            else:
+                # Preserve the existing environment-configured administrator.
+                username_valid = hmac.compare_digest(
+                    payload.username, settings.AUTH_USERNAME
                 )
-            role = user.role
-            permissions = user.permissions or []
-            user_id = user.id
-            username = user.username
-        else:
-            # Keep the environment-configured administrator as a bootstrap fallback.
-            username_valid = hmac.compare_digest(
-                payload.username, settings.AUTH_USERNAME
-            )
-            password_valid = bool(settings.AUTH_PASSWORD_HASH) and (
-                password_hash.verify(
-                    payload.password, settings.AUTH_PASSWORD_HASH
+                password_valid = bool(settings.AUTH_PASSWORD_HASH) and (
+                    password_hash.verify(
+                        payload.password, settings.AUTH_PASSWORD_HASH
+                    )
                 )
-            )
-            if not username_valid or not password_valid:
-                raise HTTPException(
-                    status_code=401,
-                    detail="Invalid username or password",
-                )
-            username = settings.AUTH_USERNAME
-            role = "Admin"
-            permissions = PAGE_PERMISSIONS
-            user_id = None
+                if not username_valid or not password_valid:
+                    raise HTTPException(
+                        status_code=401,
+                        detail="Invalid username or password",
+                    )
+                username = settings.AUTH_USERNAME
+                role = "Admin"
+                permissions = PAGE_PERMISSIONS
+                user_id = None
 
         session_id = _create_session(
             username=username,
@@ -233,7 +264,6 @@ def login(payload: LoginRequest, response: Response):
         }
     finally:
         db.close()
-
 
 @router.post("/logout")
 def logout(

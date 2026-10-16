@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     API_KEY: str = ""  # empty = auth disabled (local dev only)
     AUTH_USERNAME: str = "Radiantech-Dashboard"
     AUTH_PASSWORD_HASH: str = ""
+    AUTH_IT_USERNAME: str = "IT"
+    AUTH_IT_PASSWORD_HASH: str = ""
+    AUTH_USER_USERNAME: str = "User"
+    AUTH_USER_PASSWORD_HASH: str = ""
     AUTH_SESSION_SECRET: str = ""
     FOOTAGE_STORAGE_DIR: str = "/app/footage_storage"
     AI_SNAPSHOT_STORAGE_DIR: str = "/app/ai_snapshot_storage"

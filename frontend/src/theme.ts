@@ -159,23 +159,6 @@ const theme = createTheme({
           color: colors.text,
         },
 
-        ".page-content::before": {
-          content: '""',
-          position: "absolute",
-          top: "76%",
-          left: "50%",
-          width: "min(36%, 400px)",
-          aspectRatio: "1 / 1",
-          transform: "translate(-50%, -50%)",
-          backgroundImage: 'url("/radiantech-logo-watermark.png")',
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-          backgroundSize: "contain",
-          opacity: 0.10,
-          pointerEvents: "none",
-          zIndex: 0,
-        },
-
         ".page-content > *": {
           position: "relative",
           zIndex: 1,

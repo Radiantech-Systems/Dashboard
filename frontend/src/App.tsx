@@ -79,20 +79,71 @@ function AuthenticatedApp({
   onLogout: () => void;
 }) {
   const socket = useTelemetrySocket();
+  const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000;
 
   async function handleLogout() {
     try {
       await logout();
     } finally {
+      try {
+        localStorage.setItem("telemetry_dashboard_logout", String(Date.now()));
+      } catch {
+        // Logout must still work if browser storage is unavailable.
+      }
       onLogout();
     }
   }
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    let loggingOut = false;
+
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!loggingOut) {
+          loggingOut = true;
+          void handleLogout();
+        }
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "telemetry_dashboard_logout" && event.newValue) {
+        window.location.assign("/login");
+      }
+    };
+
+    const activityEvents = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "scroll",
+      "touchstart",
+      "click",
+    ] as const;
+
+    activityEvents.forEach((event) =>
+      window.addEventListener(event, resetTimer, { passive: true })
+    );
+    window.addEventListener("storage", onStorage);
+    resetTimer();
+
+    return () => {
+      clearTimeout(timer);
+      activityEvents.forEach((event) =>
+        window.removeEventListener(event, resetTimer)
+      );
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   return (
     <Layout
       status={socket.status}
       userRole={identity.role}
       permissions={identity.permissions ?? []}
+      onLogout={handleLogout}
     >
       <PermissionGuard identity={identity}>
         <Routes>

@@ -1,4 +1,5 @@
 import { ReactNode, useState } from "react";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -31,7 +32,6 @@ import CameraAltOutlinedIcon from "@mui/icons-material/CameraAltOutlined";
 import TrafficIcon from "@mui/icons-material/Traffic";
 import MenuIcon from "@mui/icons-material/Menu";
 import PeopleAltIcon from "@mui/icons-material/PeopleAltOutlined";
-import CompanyWatermark from "./CompanyWatermark";
 import type { ConnectionStatus } from "../hooks/useTelemetrySocket";
 
 const DRAWER_WIDTH = 260;
@@ -85,11 +85,13 @@ export default function Layout({
   status,
   userRole = "",
   permissions = [],
+  onLogout,
 }: {
   children: ReactNode;
   status: ConnectionStatus;
   userRole?: string;
   permissions?: string[];
+  onLogout: () => void | Promise<void>;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -154,7 +156,7 @@ export default function Layout({
       >
         <Box
           component="img"
-          src="/radiantech-logo-watermark.png"
+          src="/radiantech-logo-original.png"
           alt="Radiantech System logo"
           sx={{
             width: 130,
@@ -408,7 +410,18 @@ export default function Layout({
               </Typography>
             </Stack>
 
-            <StatusChip status={status} />
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <StatusChip status={status} />
+              <IconButton
+                color="inherit"
+                aria-label="Logout"
+                title="Logout"
+                onClick={() => void onLogout()}
+                sx={{ flexShrink: 0 }}
+              >
+                <LogoutIcon />
+              </IconButton>
+            </Stack>
           </Toolbar>
         </AppBar>
 
@@ -434,7 +447,6 @@ export default function Layout({
           }}
         >
           {children}
-          <CompanyWatermark />
         </Box>
       </Box>
     </Box>

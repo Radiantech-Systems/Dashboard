@@ -29,6 +29,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - .env.fixed-accounts
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-telemetry}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-telemetry_pw}
@@ -39,7 +41,8 @@ services:
       DEVICE_OFFLINE_TIMEOUT_SECONDS: 15
       API_KEY: ${API_KEY:-}
       AUTH_USERNAME: ${AUTH_USERNAME:-Radiantech-Dashboard}
-      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH:-}
+      AUTH_IT_USERNAME: ${AUTH_IT_USERNAME:-IT}
+      AUTH_USER_USERNAME: ${AUTH_USER_USERNAME:-User}
       AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:-}
       FOOTAGE_STORAGE_DIR: /app/footage_storage
     volumes:
