@@ -50,6 +50,73 @@ type SnapshotResultResponse = {
   data?: SnapshotData;
 };
 
+type FineRate = {
+  key: string;
+  name: string;
+  section: string;
+  amount: number;
+};
+
+type FineRatesResponse = {
+  source_url: string;
+  fetched_at: string;
+  stale: boolean;
+  refresh_error?: string | null;
+  rates: FineRate[];
+};
+
+const OFFENCE_ALIASES: Record<string, string> = {
+  nohelmet: "nohelmet",
+  helmetviolation: "nohelmet",
+  withouthelmet: "nohelmet",
+  notwearinghelmet: "nohelmet",
+  helmetless: "nohelmet",
+
+  signaljumping: "signaljumping",
+  redlightjumping: "signaljumping",
+  signalviolation: "signaljumping",
+
+  tripleriding: "tripleriding",
+  triplepersonriding: "tripleriding",
+  morethantwopersons: "tripleriding",
+};
+
+const SUPPORTED_OFFENCES = [
+  { key: "nohelmet", name: "No Helmet" },
+  { key: "signaljumping", name: "Signal Jumping" },
+  { key: "tripleriding", name: "Triple Riding" },
+];
+
+function normaliseOffence(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/*
+ * Filenames follow the plate-offence convention.
+ * Split at the first separator so offence labels such as
+ * "no-helmet" and "signal-jumping" remain intact.
+ */
+function offenceLabelFromFilename(filename: string): string {
+  const basename = filename.split(/[\\/]/).pop() || "";
+  const stem = basename.replace(/\.[^.]+$/, "");
+  const separator = stem.indexOf("-");
+  if (separator < 0) return "";
+
+  return stem
+    .slice(separator + 1)
+    .replace(/(?:[_-]\d+)$/, "")
+    .trim();
+}
+
+function offenceKeyFromFilename(filename: string): string | null {
+  const label = normaliseOffence(offenceLabelFromFilename(filename));
+  return OFFENCE_ALIASES[label] || null;
+}
+
+function formatRupees(amount: number): string {
+  return `₹${amount.toLocaleString("en-IN")}`;
+}
+
 const DEVICE_ID = "radian-edge-asrock-01";
 
 
@@ -72,6 +139,65 @@ function formatTimestamp(timestamp: string): string {
 
 export default function AISnapshots() {
   const [search, setSearch] = useState("");
+  const [fineRates, setFineRates] = useState<FineRate[]>([]);
+  const [fineRatesFetchedAt, setFineRatesFetchedAt] = useState<string | null>(null);
+  const [fineRatesStale, setFineRatesStale] = useState(false);
+  const [fineRatesError, setFineRatesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadFineRates = async () => {
+      try {
+        const response = await fetch(`${API_URL}/fine-rates`, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          let message = `Fine rates request failed (${response.status})`;
+          try {
+            const errorData = await response.json();
+            if (typeof errorData.detail === "string") {
+              message = errorData.detail;
+            }
+          } catch {
+            // Keep the HTTP status message.
+          }
+          throw new Error(message);
+        }
+
+        const data: FineRatesResponse = await response.json();
+        if (!active) return;
+
+        setFineRates(data.rates || []);
+        setFineRatesFetchedAt(data.fetched_at || null);
+        setFineRatesStale(Boolean(data.stale));
+        setFineRatesError(
+          data.stale
+            ? "The official source could not be refreshed. Showing the last successful rates."
+            : null,
+        );
+      } catch (error) {
+        if (!active) return;
+        setFineRatesError(
+          error instanceof Error ? error.message : "Unable to load fine rates.",
+        );
+      }
+    };
+
+    void loadFineRates();
+    const refreshTimer = window.setInterval(
+      () => void loadFineRates(),
+      6 * 60 * 60 * 1000,
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+    };
+  }, []);
 
   /*
    * Keep all categories in state.
@@ -322,6 +448,39 @@ useEffect(() => {
     ].some((value) => value.toLowerCase().includes(query));
   });
 
+  const offenceCounts: Record<string, number> = {
+    nohelmet: 0,
+    signaljumping: 0,
+    tripleriding: 0,
+  };
+  const unidentifiedCounts: Record<string, number> = {};
+
+  snapshots.forEach((snapshot) => {
+    const key = offenceKeyFromFilename(snapshot.filename);
+
+    if (key && key in offenceCounts) {
+      offenceCounts[key] += 1;
+      return;
+    }
+
+    const rawLabel = offenceLabelFromFilename(snapshot.filename);
+    const label = rawLabel || "Missing offence label";
+    unidentifiedCounts[label] = (unidentifiedCounts[label] || 0) + 1;
+  });
+
+  const ratesByKey = new Map(fineRates.map((rate) => [rate.key, rate]));
+  const allRatesAvailable = SUPPORTED_OFFENCES.every((offence) => {
+    const rate = ratesByKey.get(offence.key);
+    return rate !== undefined && Number.isFinite(rate.amount);
+  });
+
+  const totalEstimatedFine = allRatesAvailable
+    ? SUPPORTED_OFFENCES.reduce((total, offence) => {
+        const rate = ratesByKey.get(offence.key)!;
+        return total + offenceCounts[offence.key] * rate.amount;
+      }, 0)
+    : null;
+
   return (
     <Box>
       <Stack
@@ -357,7 +516,7 @@ useEffect(() => {
         spacing={3}
       >
         {/* SNAPSHOTS */}
-        <Grid item xs={12} md={12}>
+        <Grid item xs={12} md={8}>
           <TextField
             fullWidth
             size="small"
@@ -467,6 +626,147 @@ useEffect(() => {
                 </Grid>
               )}
           </Grid>
+        </Grid>
+
+        {/* FINE SUMMARY */}
+        <Grid item xs={12} md={4}>
+          <Paper
+            variant="outlined"
+            sx={{
+              p: 2.5,
+              borderRadius: 2,
+              height: "fit-content",
+              position: { md: "sticky" },
+              top: { md: 16 },
+            }}
+          >
+            <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+              Fine Summary
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Counts are based on all loaded snapshots, regardless of search.
+            </Typography>
+
+            {SUPPORTED_OFFENCES.map((offence) => {
+              const rate = ratesByKey.get(offence.key);
+              const count = offenceCounts[offence.key];
+              const subtotal = rate ? count * rate.amount : null;
+
+              return (
+                <Box key={offence.key} sx={{ py: 1.25 }}>
+                  <Stack direction="row" justifyContent="space-between" spacing={1}>
+                    <Typography fontWeight={600}>{offence.name}</Typography>
+                    <Typography fontWeight={700}>{count}</Typography>
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    {rate
+                      ? `Rate: ${formatRupees(rate.amount)}`
+                      : "Rate unavailable"}
+                    {rate?.section ? ` · ${rate.section}` : ""}
+                  </Typography>
+                  <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Subtotal
+                    </Typography>
+                    <Typography variant="body2" fontWeight={600}>
+                      {subtotal === null ? "—" : formatRupees(subtotal)}
+                    </Typography>
+                  </Stack>
+                  <Divider sx={{ mt: 1.25 }} />
+                </Box>
+              );
+            })}
+
+            <Box sx={{ py: 1.5 }}>
+              <Stack direction="row" justifyContent="space-between" spacing={1}>
+                <Typography fontWeight={600}>
+                  Unidentified / Unmatched
+                </Typography>
+                <Typography fontWeight={700}>
+                  {Object.values(unidentifiedCounts).reduce((sum, count) => sum + count, 0)}
+                </Typography>
+              </Stack>
+
+              {Object.keys(unidentifiedCounts).length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  {Object.entries(unidentifiedCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 8)
+                    .map(([label, count]) => (
+                      <Stack
+                        key={label}
+                        direction="row"
+                        justifyContent="space-between"
+                        spacing={1}
+                      >
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          sx={{ overflowWrap: "anywhere" }}
+                        >
+                          {label}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {count}
+                        </Typography>
+                      </Stack>
+                    ))}
+                  {Object.keys(unidentifiedCounts).length > 8 && (
+                    <Typography variant="caption" color="text.secondary">
+                      Showing 8 of {Object.keys(unidentifiedCounts).length} unmatched labels.
+                    </Typography>
+                  )}
+                </Box>
+              )}
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.75 }}>
+                No fine is assigned to unmatched labels.
+              </Typography>
+            </Box>
+
+            <Divider sx={{ my: 1 }} />
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+              <Typography fontWeight={700}>Total estimated fines</Typography>
+              <Typography variant="h6" fontWeight={800} textAlign="right">
+                {totalEstimatedFine === null ? "—" : formatRupees(totalEstimatedFine)}
+              </Typography>
+            </Stack>
+
+            {!allRatesAvailable && (
+              <Typography color="warning.main" variant="body2" sx={{ mt: 1 }}>
+                Rates are unavailable or incomplete. The total is withheld until all supported rates load.
+              </Typography>
+            )}
+
+            {fineRatesError && (
+              <Typography color="warning.main" variant="caption" display="block" sx={{ mt: 1 }}>
+                {fineRatesError}
+              </Typography>
+            )}
+
+            {fineRatesStale && (
+              <Typography color="warning.main" variant="caption" display="block" sx={{ mt: 0.5 }}>
+                Using cached rates from the last successful refresh.
+              </Typography>
+            )}
+
+            {fineRatesFetchedAt && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1.5 }}>
+                Last successful refresh: {formatTimestamp(fineRatesFetchedAt)}
+              </Typography>
+            )}
+
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              Rates published by{" "}
+              <a
+                href="https://www.htp.gov.in/road_rules.html"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Hyderabad Traffic Police
+              </a>
+              . Verify current legal penalties with the official authority.
+            </Typography>
+          </Paper>
         </Grid>
       </Grid>
 

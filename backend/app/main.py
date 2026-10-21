@@ -36,6 +36,7 @@ from app.routers import (
     temperature,
     footage,
     ai_snapshots,
+    fine_rates,
     snapshot_commands,
     video_commands,
     video_stream
@@ -106,6 +107,7 @@ app.include_router(network.router)
 app.include_router(temperature.router)
 app.include_router(footage.router)
 app.include_router(ai_snapshots.router)
+app.include_router(fine_rates.router)
 app.include_router(snapshot_commands.router)
 app.include_router(video_commands.router)
 app.include_router(video_stream.router)

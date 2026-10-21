@@ -267,7 +267,7 @@ export default function Layout({
               width: "100%",
               height: "100%",
               objectFit: "contain",
-              objectPosition: "center 58%",
+              objectPosition: "center 68%",
               display: "block",
               pointerEvents: "none",
             }}
