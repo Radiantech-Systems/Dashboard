@@ -5,32 +5,36 @@ import {
   Button,
   CircularProgress,
   IconButton,
-  Paper,
   InputAdornment,
+  Paper,
   TextField,
   Typography,
 } from "@mui/material";
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { login } from "../api/client";
 import "./Login.css";
+
+type AccountRole = "Admin" | "User" | "IT";
 
 interface LoginProps {
   onLogin: () => void;
 }
 
 export default function Login({ onLogin }: LoginProps) {
-  const [username, setUsername] = useState("Radiantech-Dashboard");
+  const [role, setRole] = useState<AccountRole>("Admin");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      await login(username, password);
+      await login(username, password, role);
       onLogin();
     } catch (err: any) {
       if (err?.response?.status === 401) {
@@ -45,35 +49,48 @@ export default function Login({ onLogin }: LoginProps) {
 
   return (
     <Box className="login-page">
-      <header className="login-header">
-        <div className="company-brand">
-          <img
-            src="/radiantech-logo.jpg"
-            alt="Radiantech System logo"
-            className="company-logo"
-          />
-          <Typography className="company-name">
-            Radiantech System
-          </Typography>
-        </div>
-
-        <div className="product-brand">
-          <Typography className="product-name">
-            RADIAN DRISHTI
-          </Typography>
-          <Typography className="product-powered">
-            POWERED BY RADIAN-EDGE
-          </Typography>
-        </div>
-      </header>
-
       <main className="login-main">
         <Paper elevation={0} className="login-card">
-          <Box className="login-title">
-            <Typography component="h1">
-              Dashboard Login
+          <Box className="login-heading">
+            <Typography component="p" className="login-welcome">
+              Welcome to
             </Typography>
-            <span className="login-title-accent" />
+
+            <Typography component="h1" className="login-brand">
+              Radian Edge Platform
+            </Typography>
+
+            <Typography className="login-subtitle">
+              Sign in to access your dashboard
+            </Typography>
+          </Box>
+
+          <Box className="role-section">
+            <Typography className="role-label">
+              Select your account type
+            </Typography>
+
+            <Box
+              className="role-switch"
+              role="group"
+              aria-label="Select account type"
+            >
+              {(["Admin", "User", "IT"] as AccountRole[]).map((item) => (
+                <Button
+                  key={item}
+                  type="button"
+                  disableRipple
+                  className={`role-option ${
+                    role === item ? "selected" : ""
+                  }`}
+                  aria-pressed={role === item}
+                  onClick={() => setRole(item)}
+                >
+                  {item}
+                </Button>
+              ))}
+            </Box>
+
           </Box>
 
           <Box
@@ -81,57 +98,65 @@ export default function Login({ onLogin }: LoginProps) {
             onSubmit={handleSubmit}
             className="login-form"
           >
-            {error && (
-              <Alert severity="error">{error}</Alert>
-            )}
+            {error && <Alert severity="error">{error}</Alert>}
 
-            <TextField
-              label="Username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              fullWidth
-              required
-              autoComplete="username"
-              className="login-field"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <span className="field-symbol">♙</span>
-                  </InputAdornment>
-                ),
-              }}
-            />
+            <Box className="login-field-group">
+              <Typography component="label" htmlFor="login-username">
+                Username
+              </Typography>
 
-            <TextField
-              label="Password"
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              fullWidth
-              required
-              autoComplete="current-password"
-              className="login-field"
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <span className="field-symbol">♙</span>
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
-                      onClick={() => setShowPassword((value) => !value)}
-                      edge="end"
-                    >
-                      {showPassword ? "◉" : "◎"}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
+              <TextField
+                id="login-username"
+                placeholder="Enter your username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                fullWidth
+                required
+                autoComplete="username"
+                size="small"
+                className="login-field"
+              />
+            </Box>
+
+            <Box className="login-field-group">
+              <Typography component="label" htmlFor="login-password">
+                Password
+              </Typography>
+
+              <TextField
+                id="login-password"
+                placeholder="Enter your password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                fullWidth
+                required
+                autoComplete="current-password"
+                size="small"
+                className="login-field"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        type="button"
+                        onClick={() => setShowPassword((value) => !value)}
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? (
+                          <VisibilityOff fontSize="small" />
+                        ) : (
+                          <Visibility fontSize="small" />
+                        )}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Box>
 
             <Button
               type="submit"
@@ -141,13 +166,18 @@ export default function Login({ onLogin }: LoginProps) {
               className="login-submit"
             >
               {loading ? (
-                <CircularProgress size={23} color="inherit" />
+                <CircularProgress size={22} color="inherit" />
               ) : (
                 <>
-                  SIGN IN <span className="submit-arrow">→</span>
+                  Sign In <span className="submit-arrow">→</span>
                 </>
               )}
             </Button>
+          </Box>
+
+          <Box component="footer" className="login-copyright">
+            © {new Date().getFullYear()} Radiantech-Systems Pvt LTD.
+            {" "}All rights reserved.
           </Box>
         </Paper>
       </main>

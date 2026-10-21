@@ -22,4 +22,14 @@ export const CCTV_STREAMS: CctvStream[] = [
     path: "jetson1_ai",
     source: "mediamtx",
   },
+  {
+    label: "Cam 2",
+    path: "jetson2_raw",
+    source: "mediamtx",
+  },
+  {
+    label: "Cam 2 Processed AI Stream",
+    path: "jetson2_ai",
+    source: "mediamtx",
+  },
 ];

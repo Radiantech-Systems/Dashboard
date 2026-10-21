@@ -53,6 +53,7 @@ ROLE_DEFAULTS = {
 class LoginRequest(BaseModel):
     username: str
     password: str
+    role: str = "Admin"
 
 
 class UserCreate(BaseModel):
@@ -240,6 +241,12 @@ def login(payload: LoginRequest, response: Response):
                 role = "Admin"
                 permissions = PAGE_PERMISSIONS
                 user_id = None
+
+        if payload.role not in ROLE_DEFAULTS or payload.role != role:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid username or password",
+            )
 
         session_id = _create_session(
             username=username,

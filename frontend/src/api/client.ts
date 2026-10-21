@@ -50,11 +50,13 @@ export interface PermissionCatalog {
 
 export async function login(
   username: string,
-  password: string
+  password: string,
+  role: "Admin" | "User" | "IT"
 ): Promise<AuthResponse> {
   const { data } = await client.post<AuthResponse>("/auth/login", {
     username,
     password,
+    role,
   });
 
   return data;

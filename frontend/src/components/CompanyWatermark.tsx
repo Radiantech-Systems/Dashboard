@@ -5,32 +5,36 @@ export default function CompanyWatermark() {
     <Box
       sx={{
         position: "fixed",
-        right: 24,
-        bottom: 18,
-        zIndex: 9999,
-        opacity: 0.35,
+        right: { xs: 12, sm: 20 },
+        bottom: { xs: 10, sm: 16 },
+        zIndex: 10,
+        opacity: 0.72,
         pointerEvents: "none",
         userSelect: "none",
         textAlign: "right",
+        lineHeight: 1.2,
       }}
     >
       <Typography
         sx={{
-          fontSize: "18px",
+          fontSize: { xs: "11px", sm: "13px" },
           fontWeight: 700,
-          color: "text.primary",
-          letterSpacing: "0.02em",
+          color: "#183153",
+          letterSpacing: "0.035em",
           whiteSpace: "nowrap",
+          lineHeight: 1.4,
         }}
       >
-        Radian Drishti
+        RADIAN DRISHTI
       </Typography>
+
       <Typography
         sx={{
-          fontSize: "11px",
+          fontSize: { xs: "8px", sm: "9px" },
           fontWeight: 500,
-          color: "text.primary",
+          color: "#64748b",
           whiteSpace: "nowrap",
+          lineHeight: 1.4,
         }}
       >
         Powered by Radian Edge Platform

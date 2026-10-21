@@ -18,3 +18,9 @@ paths:
 
   sliced_test:
     source: publisher
+
+  jetson2_raw:
+    source: publisher
+
+  jetson2_ai:
+    source: publisher
